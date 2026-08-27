@@ -135,7 +135,7 @@ func (c *Client) get(ctx context.Context, version Version, path string, out any)
 	if err != nil {
 		return fmt.Errorf("contacting %s: %w", endpoint, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
