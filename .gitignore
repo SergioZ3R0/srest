@@ -1,0 +1,9 @@
+# Binarios compilados
+/srest
+/srest.exe
+*.exe
+*.test
+*.out
+
+# Dependencias de Go
+/vendor/
