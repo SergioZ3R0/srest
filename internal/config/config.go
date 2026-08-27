@@ -1,8 +1,9 @@
-// Package config carga la configuración de srest desde el entorno.
+// Package config loads srest's configuration from the environment.
 //
-// La prioridad es la siguiente:
-//  1. Variables de entorno (SLURM_URL, SLURM_JWT, SLURM_USER_NAME).
-//  2. Valores por defecto (solo para la URL).
+// Precedence is as follows:
+//  1. Environment variables (SLURM_URL, SLURM_JWT, SLURM_USER_NAME,
+//     SLURM_API_VERSION).
+//  2. Default values (URL only).
 package config
 
 import (
@@ -10,33 +11,37 @@ import (
 	"os/user"
 )
 
-// defaultURL es el endpoint por defecto de slurmrestd.
+// defaultURL is the default slurmrestd endpoint.
 const defaultURL = "http://localhost:6820"
 
-// Config agrupa los parámetros necesarios para hablar con la REST API de Slurm.
+// Config groups the parameters needed to talk to the Slurm REST API.
 type Config struct {
-	// URL es la dirección base de slurmrestd (por ejemplo http://localhost:6820).
+	// URL is the base address of slurmrestd (e.g. http://localhost:6820).
 	URL string
 
-	// JWT es el token de autenticación que se envía en la cabecera
-	// X-SLURM-USER-TOKEN.
+	// JWT is the authentication token sent in the X-SLURM-USER-TOKEN header.
 	JWT string
 
-	// Username es el usuario que se envía en la cabecera X-SLURM-USER-NAME.
+	// Username is the user sent in the X-SLURM-USER-NAME header.
 	Username string
+
+	// APIVersion is the API version to use (optional, e.g. "v0.0.44"). When
+	// empty, srest auto-detects the version supported by the cluster.
+	APIVersion string
 }
 
-// Load lee la configuración desde las variables de entorno y aplica los
-// valores por defecto cuando no hay nada definido.
+// Load reads the configuration from environment variables and applies default
+// values when nothing is defined.
 func Load() Config {
 	return Config{
-		URL:      getEnv("SLURM_URL", defaultURL),
-		JWT:      os.Getenv("SLURM_JWT"),
-		Username: getEnv("SLURM_USER_NAME", currentUser()),
+		URL:        getEnv("SLURM_URL", defaultURL),
+		JWT:        os.Getenv("SLURM_JWT"),
+		Username:   getEnv("SLURM_USER_NAME", currentUser()),
+		APIVersion: os.Getenv("SLURM_API_VERSION"),
 	}
 }
 
-// getEnv devuelve el valor de key o, si está vacío, el valor fallback.
+// getEnv returns the value of key or, when empty, the fallback value.
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -44,8 +49,8 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// currentUser devuelve el nombre del usuario actual del sistema, usado como
-// valor por defecto para X-SLURM-USER-NAME.
+// currentUser returns the username of the current OS user, used as the default
+// for X-SLURM-USER-NAME.
 func currentUser() string {
 	u, err := user.Current()
 	if err != nil {
