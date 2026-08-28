@@ -73,4 +73,17 @@ var (
 	// dividerStyle renders horizontal separator lines.
 	dividerStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("240"))
+
+	// queryMethodStyle formats the HTTP method in the query log.
+	queryMethodStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("12"))
+
+		// queryDetailStyle formats secondary query log details (duration).
+	queryDetailStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("8"))
+
+	// queryInputStyle formats the query builder input line.
+	queryInputStyle = lipgloss.NewStyle().
+			Padding(0, 0, 1, 0)
 )

@@ -13,6 +13,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -37,6 +39,9 @@ type Model struct {
 	jobs       table.Model
 	nodes      table.Model
 	partitions table.Model
+	queries    []api.Query
+	queryVP    viewport.Model
+	queryInput textinput.Model
 	spinner    spinner.Model
 	help       help.Model
 	width      int
@@ -49,17 +54,36 @@ func New(client *api.Client) Model {
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
+	ti := textinput.New()
+	ti.Placeholder = "/jobs?state=RUNNING"
+	ti.Prompt = "GET "
+	ti.CharLimit = 256
+	ti.Focus()
+
 	return Model{
 		client:     client,
 		status:     "Connecting to Slurm...",
-		tabs:       []string{"Dashboard", "Jobs", "Nodes", "Partitions"},
+		tabs:       []string{"Dashboard", "Jobs", "Nodes", "Partitions", "Query"},
 		active:     0,
 		jobs:       newJobsTable(),
 		nodes:      newNodesTable(),
 		partitions: newPartitionsTable(),
+		queryVP:    viewport.New(0, 0),
+		queryInput: ti,
 		spinner:    s,
 		help:       help.New(),
 	}
+}
+
+// refreshQueries pulls the latest recorded queries from the client into the
+// query inspector viewport.
+func (m *Model) refreshQueries() {
+	if m.client == nil {
+		return
+	}
+	m.queries = m.client.Queries()
+	m.queryVP.SetContent(queryLog(m.queries))
+	m.queryVP.GotoBottom()
 }
 
 // statusMsg is the message the connection command returns to the model.
@@ -88,6 +112,21 @@ func connectCmd(c *api.Client) tea.Cmd {
 	}
 }
 
+// queryRunMsg is returned after the query builder executes a request.
+type queryRunMsg struct {
+	path string
+	err  error
+}
+
+// runQueryCmd issues a GET request built by the query builder.
+func runQueryCmd(c *api.Client, path string) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		return queryRunMsg{path: path, err: c.Get(ctx, path, nil)}
+	}
+}
+
 // Init starts the connection (detection + ping) and the spinner tick.
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(connectCmd(m.client), m.spinner.Tick)
@@ -107,6 +146,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.release = msg.info.Slurm.Release
 			m.warnings = msg.info.Warnings
 		}
+		m.refreshQueries()
+		return m, nil
+
+	case queryRunMsg:
+		m.refreshQueries()
 		return m, nil
 
 	case spinner.TickMsg:
@@ -131,7 +175,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Delegate remaining keys to the active table (row navigation).
+		// The Query tab has its own key handling (input + presets + run).
+		if m.active == 4 {
+			return m.handleQueryTabKey(msg)
+		}
+
+		// Delegate remaining keys to the active panel (table).
 		switch m.active {
 		case 1:
 			m.jobs, _ = m.jobs.Update(msg)
@@ -150,6 +199,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.jobs.SetHeight(h)
 		m.nodes.SetHeight(h)
 		m.partitions.SetHeight(h)
+
+		m.queryVP.Width = msg.Width - 4
+		h -= 3
+		if h < 2 {
+			h = 2
+		}
+		m.queryVP.Height = h
+		m.refreshQueries()
 	}
 
 	return m, nil
@@ -163,6 +220,42 @@ func (m Model) tableHeight() int {
 		h = 3
 	}
 	return h
+}
+
+// handleQueryTabKey routes keys within the Query tab: presets, run, log
+// scrolling and typing into the builder input.
+func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "1":
+		m.queryInput.SetValue("/jobs")
+		return m, nil
+	case "2":
+		m.queryInput.SetValue("/nodes")
+		return m, nil
+	case "3":
+		m.queryInput.SetValue("/partitions")
+		return m, nil
+	case "enter":
+		path := strings.TrimSpace(m.queryInput.Value())
+		if path == "" {
+			return m, nil
+		}
+		return m, runQueryCmd(m.client, path)
+	case "up", "down", "pgup", "pgdown", "home", "end":
+		m.queryVP, _ = m.queryVP.Update(msg)
+		return m, nil
+	default:
+		var cmd tea.Cmd
+		m.queryInput, cmd = m.queryInput.Update(msg)
+		return m, cmd
+	}
+}
+
+// queryTabView renders the Query tab: builder input on top, inspector below.
+func (m Model) queryTabView() string {
+	label := detailStyle.Render("1=jobs 2=nodes 3=partitions  enter=run")
+	input := queryInputStyle.Render(m.queryInput.View())
+	return lipgloss.JoinVertical(lipgloss.Left, label, input, m.queryVP.View())
 }
 
 // focusTab blurs every table and focuses the one matching the active tab.
@@ -233,6 +326,8 @@ func (m Model) contentView() string {
 		return m.nodes.View()
 	case 3:
 		return m.partitions.View()
+	case 4:
+		return m.queryTabView()
 	default:
 		return ""
 	}

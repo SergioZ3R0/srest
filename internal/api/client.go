@@ -15,8 +15,21 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
+
+// Query is a single HTTP request/response recorded by the client. It is used
+// by the UI's query inspector to show what srest sends to slurmrestd.
+type Query struct {
+	Method     string
+	URL        string
+	StatusCode int
+	Duration   time.Duration
+	Error      error
+	Warnings   []Warning
+	Errors     []Error
+}
 
 // Client is an HTTP client for interacting with slurmrestd.
 type Client struct {
@@ -28,6 +41,10 @@ type Client struct {
 	// version is the data_parser version we talk to. A zero Version means it
 	// has not been determined yet.
 	version Version
+
+	// mu guards the query log, which is written from request goroutines.
+	mu      sync.RWMutex
+	queries []Query
 }
 
 // New creates a new API client with the given configuration.
@@ -118,9 +135,37 @@ func (c *Client) ping(ctx context.Context, version Version) (PingInfo, error) {
 	}, nil
 }
 
+// recordQuery appends a query to the internal log.
+func (c *Client) recordQuery(q Query) {
+	c.mu.Lock()
+	c.queries = append(c.queries, q)
+	c.mu.Unlock()
+}
+
+// Queries returns a snapshot of all recorded queries.
+func (c *Client) Queries() []Query {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	out := make([]Query, len(c.queries))
+	copy(out, c.queries)
+	return out
+}
+
+// Get issues a GET request to the given API path (e.g. "/jobs?state=RUNNING")
+// using the detected API version. The response is recorded in the query log.
+// If out is non-nil, the JSON body is decoded into it.
+func (c *Client) Get(ctx context.Context, path string, out any) error {
+	v, ok := c.Version()
+	if !ok {
+		return fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+	return c.get(ctx, v, path, out)
+}
+
 // get executes a GET request and decodes the resulting JSON into out.
 func (c *Client) get(ctx context.Context, version Version, path string, out any) error {
 	endpoint := fmt.Sprintf("%s/slurm/%s%s", c.baseURL, version, path)
+	start := time.Now()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -133,24 +178,47 @@ func (c *Client) get(ctx context.Context, version Version, path string, out any)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		c.recordQuery(Query{Method: http.MethodGet, URL: endpoint, Duration: time.Since(start), Error: err})
 		return fmt.Errorf("contacting %s: %w", endpoint, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		c.recordQuery(Query{Method: http.MethodGet, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Error: err})
 		return fmt.Errorf("reading response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return &StatusError{Code: resp.StatusCode, Body: string(body)}
+		se := &StatusError{Code: resp.StatusCode, Body: string(body)}
+		c.recordQuery(Query{Method: http.MethodGet, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Error: se})
+		return se
 	}
 
 	if out != nil {
 		if err := json.Unmarshal(body, out); err != nil {
+			c.recordQuery(Query{Method: http.MethodGet, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Error: err})
 			return fmt.Errorf("decoding response: %w", err)
 		}
 	}
 
+	// Decode the common envelope to capture warnings/errors regardless of the
+	// type requested in out.
+	var envelope Response
+	var warnings []Warning
+	var qerrs []Error
+	if err := json.Unmarshal(body, &envelope); err == nil {
+		warnings = envelope.Warnings
+		qerrs = envelope.Errors
+	}
+
+	c.recordQuery(Query{
+		Method:     http.MethodGet,
+		URL:        endpoint,
+		StatusCode: resp.StatusCode,
+		Duration:   time.Since(start),
+		Warnings:   warnings,
+		Errors:     qerrs,
+	})
 	return nil
 }

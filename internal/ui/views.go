@@ -1,8 +1,14 @@
 package ui
 
 import (
+	"fmt"
+	"strings"
+	"time"
+
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/SergioZ3R0/srest/internal/api"
 )
 
 // tableStyles returns the shared style for all data tables.
@@ -118,4 +124,53 @@ func dashboardView() string {
 	)
 
 	return lipgloss.JoinVertical(lipgloss.Left, title, cards)
+}
+
+// statusColor returns the style used to render an HTTP status code.
+func statusColor(code int) lipgloss.Style {
+	switch {
+	case code >= 500:
+		return errorStyle
+	case code >= 400:
+		return warningStyle
+	case code >= 200 && code < 300:
+		return successStyle
+	default:
+		return statusStyle
+	}
+}
+
+// queryLog renders the recorded HTTP queries as a scrollable log.
+func queryLog(queries []api.Query) string {
+	if len(queries) == 0 {
+		return detailStyle.Render("No queries yet. Connect to a cluster to see traffic.")
+	}
+
+	var sb strings.Builder
+	for i, q := range queries {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		status := "—"
+		if q.StatusCode > 0 {
+			status = fmt.Sprintf("%d", q.StatusCode)
+		}
+		method := queryMethodStyle.Render(q.Method)
+		code := statusColor(q.StatusCode).Render(status)
+		dur := queryDetailStyle.Render(q.Duration.Round(time.Millisecond).String())
+
+		sb.WriteString(fmt.Sprintf("%s  %s  %-8s  %s",
+			method, code, dur, q.URL))
+
+		if q.Error != nil {
+			sb.WriteString("\n  " + errorStyle.Render("error: "+q.Error.Error()))
+		}
+		for _, w := range q.Warnings {
+			sb.WriteString("\n  " + warningStyle.Render("warning: "+w.Description))
+		}
+		for _, e := range q.Errors {
+			sb.WriteString("\n  " + warningStyle.Render("api error: "+e.Description))
+		}
+	}
+	return sb.String()
 }
