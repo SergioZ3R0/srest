@@ -24,10 +24,14 @@ func TestModelViewSuccess(t *testing.T) {
 
 	view := m.View()
 	for _, want := range []string{
-		"Connection successful!",
+		"Connected",
 		"v0.0.45",
 		"26.05.2",
 		"Ignored field",
+		"Dashboard",
+		"Jobs",
+		"Nodes",
+		"Partitions",
 	} {
 		if !strings.Contains(view, want) {
 			t.Errorf("View() does not contain %q:\n%s", want, view)

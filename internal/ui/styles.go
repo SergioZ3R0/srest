@@ -6,22 +6,21 @@ var (
 	// titleStyle formats the application header.
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("12")).
-			Padding(0, 0, 1, 0)
+			Foreground(lipgloss.Color("12"))
 
-	// statusStyle formats the normal status message.
+	// statusStyle formats the transient status message (e.g. connecting).
 	statusStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("15"))
+
+	// successStyle formats the success indicator.
+	successStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("10"))
 
 	// errorStyle formats the error message in red.
 	errorStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("9"))
-
-	// helpStyle formats the bottom help line.
-	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("8")).
-			Padding(1, 0, 0, 0)
 
 	// detailStyle formats the detail lines (API and Slurm versions).
 	detailStyle = lipgloss.NewStyle().
@@ -30,4 +29,48 @@ var (
 	// warningStyle formats the warnings returned by slurmrestd.
 	warningStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("3"))
+
+	// tabStyle formats an inactive tab.
+	tabStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8")).
+			Padding(0, 2)
+
+	// activeTabStyle formats the currently selected tab.
+	activeTabStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("15")).
+			Background(lipgloss.Color("57")).
+			Padding(0, 2)
+
+	// panelTitleStyle formats a panel's title.
+	panelTitleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("12")).
+			Margin(0, 0, 1, 0)
+
+	// cardStyle wraps a dashboard stat card.
+	cardStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("240")).
+			Padding(1, 2).
+			MarginRight(1)
+
+	// cardLabelStyle formats a stat card's label.
+	cardLabelStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8"))
+
+	// cardValueStyle formats a stat card's value.
+	cardValueStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("15"))
+
+	// frameStyle draws the outer frame around the whole UI.
+	frameStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("240")).
+			Padding(0, 1)
+
+	// dividerStyle renders horizontal separator lines.
+	dividerStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240"))
 )
