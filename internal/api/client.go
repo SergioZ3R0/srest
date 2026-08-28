@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -29,6 +30,7 @@ type Query struct {
 	Error      error
 	Warnings   []Warning
 	Errors     []Error
+	Body       []byte
 }
 
 // Client is an HTTP client for interacting with slurmrestd.
@@ -108,6 +110,32 @@ func (c *Client) Detect(ctx context.Context) (Version, error) {
 	return Version{}, fmt.Errorf("no supported API version found")
 }
 
+// Partitions returns the names of all partitions visible to the user. Used by
+// the query builder to offer partition values as selectable options.
+func (c *Client) Partitions(ctx context.Context) ([]string, error) {
+	v, ok := c.Version()
+	if !ok {
+		return nil, fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+
+	var resp struct {
+		Partitions []struct {
+			Name string `json:"name"`
+		} `json:"partitions"`
+	}
+	if err := c.get(ctx, v, "/partitions", &resp); err != nil {
+		return nil, err
+	}
+
+	names := make([]string, 0, len(resp.Partitions))
+	for _, p := range resp.Partitions {
+		if p.Name != "" {
+			names = append(names, p.Name)
+		}
+	}
+	return names, nil
+}
+
 // Ping checks connectivity with slurmrestd and returns the relevant
 // information (API and Slurm versions, and warnings).
 func (c *Client) Ping(ctx context.Context) (PingInfo, error) {
@@ -164,7 +192,12 @@ func (c *Client) Get(ctx context.Context, path string, out any) error {
 
 // get executes a GET request and decodes the resulting JSON into out.
 func (c *Client) get(ctx context.Context, version Version, path string, out any) error {
-	endpoint := fmt.Sprintf("%s/slurm/%s%s", c.baseURL, version, path)
+	var endpoint string
+	if strings.HasPrefix(path, "/slurmdb") {
+		endpoint = c.baseURL + path
+	} else {
+		endpoint = fmt.Sprintf("%s/slurm/%s%s", c.baseURL, version, path)
+	}
 	start := time.Now()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -191,7 +224,7 @@ func (c *Client) get(ctx context.Context, version Version, path string, out any)
 
 	if resp.StatusCode != http.StatusOK {
 		se := &StatusError{Code: resp.StatusCode, Body: string(body)}
-		c.recordQuery(Query{Method: http.MethodGet, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Error: se})
+		c.recordQuery(Query{Method: http.MethodGet, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Error: se, Body: body})
 		return se
 	}
 
@@ -219,6 +252,7 @@ func (c *Client) get(ctx context.Context, version Version, path string, out any)
 		Duration:   time.Since(start),
 		Warnings:   warnings,
 		Errors:     qerrs,
+		Body:       body,
 	})
 	return nil
 }

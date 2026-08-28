@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/SergioZ3R0/srest/internal/api"
 )
 
@@ -55,8 +57,11 @@ func TestModelViewError(t *testing.T) {
 
 func TestModelQuit(t *testing.T) {
 	m := New(nil)
-	_, cmd := m.Update(statusMsg{})
-	if cmd != nil {
-		t.Errorf("expected nil cmd, got %v", cmd)
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	if cmd == nil {
+		t.Fatal("expected a quit command")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Errorf("expected tea.Quit, got %T", cmd())
 	}
 }

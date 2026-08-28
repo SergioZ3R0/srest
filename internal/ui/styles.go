@@ -83,7 +83,56 @@ var (
 	queryDetailStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("8"))
 
-	// queryInputStyle formats the query builder input line.
-	queryInputStyle = lipgloss.NewStyle().
-			Padding(0, 0, 1, 0)
+	// composerEndpointActive formats the selected endpoint.
+	composerEndpointActive = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("15")).
+				Background(lipgloss.Color("57")).
+				Padding(0, 1)
+
+	// composerEndpoint formats an unselected endpoint.
+	composerEndpoint = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("8")).
+				Padding(0, 1)
+
+	// composerParamName formats a parameter name.
+	composerParamName = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("12")).
+				Width(14)
+
+	// composerParamValue formats a parameter value.
+	composerParamValue = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("15"))
+
+	// composerParamCursor highlights the selected parameter.
+	composerParamCursor = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("229")).
+				Background(lipgloss.Color("57"))
+
+	// composerURL formats the built URL.
+	composerURL = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8"))
+
+	// composerHint formats the key hints.
+	composerHint = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8"))
+
+	// composerPanelStyle draws a bordered frame around the composer.
+	composerPanelStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("63")).
+				Padding(0, 1)
+
+	// outputPanelStyle draws a bordered frame around the response output.
+	outputPanelStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("63")).
+				Padding(0, 1).
+				Margin(0, 0, 1, 1)
+
+	// historyPanelStyle draws a bordered frame around the request history.
+	historyPanelStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("63")).
+				Padding(0, 1)
 )

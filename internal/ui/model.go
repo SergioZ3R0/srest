@@ -6,6 +6,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -41,7 +41,8 @@ type Model struct {
 	partitions table.Model
 	queries    []api.Query
 	queryVP    viewport.Model
-	queryInput textinput.Model
+	composer   composer
+	queryFocus int
 	spinner    spinner.Model
 	help       help.Model
 	width      int
@@ -54,12 +55,6 @@ func New(client *api.Client) Model {
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
-	ti := textinput.New()
-	ti.Placeholder = "/jobs?state=RUNNING"
-	ti.Prompt = "GET "
-	ti.CharLimit = 256
-	ti.Focus()
-
 	return Model{
 		client:     client,
 		status:     "Connecting to Slurm...",
@@ -69,7 +64,7 @@ func New(client *api.Client) Model {
 		nodes:      newNodesTable(),
 		partitions: newPartitionsTable(),
 		queryVP:    viewport.New(0, 0),
-		queryInput: ti,
+		composer:   newComposer(),
 		spinner:    s,
 		help:       help.New(),
 	}
@@ -112,18 +107,20 @@ func connectCmd(c *api.Client) tea.Cmd {
 	}
 }
 
-// queryRunMsg is returned after the query builder executes a request.
-type queryRunMsg struct {
-	path string
-	err  error
+// partitionsMsg carries the partitions gathered from the cluster.
+type partitionsMsg struct {
+	names []string
+	err   error
 }
 
-// runQueryCmd issues a GET request built by the query builder.
-func runQueryCmd(c *api.Client, path string) tea.Cmd {
+// gatherPartitionsCmd fetches the cluster partitions so the builder can offer
+// them as options.
+func gatherPartitionsCmd(c *api.Client) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		return queryRunMsg{path: path, err: c.Get(ctx, path, nil)}
+		names, err := c.Partitions(ctx)
+		return partitionsMsg{names: names, err: err}
 	}
 }
 
@@ -140,17 +137,37 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.err = msg.err
 			m.status = "Connection error"
-		} else {
-			m.status = "Connected"
-			m.version = msg.info.API
-			m.release = msg.info.Slurm.Release
-			m.warnings = msg.info.Warnings
+			m.refreshQueries()
+			return m, nil
 		}
+		m.status = "Connected"
+		m.version = msg.info.API
+		m.release = msg.info.Slurm.Release
+		m.warnings = msg.info.Warnings
+		m.composer.setVersion(msg.info.API)
 		m.refreshQueries()
+		return m, gatherPartitionsCmd(m.client)
+
+	case partitionsMsg:
+		if msg.err == nil {
+			m.composer.setPartitionOptions(msg.names)
+		}
 		return m, nil
 
-	case queryRunMsg:
+	case composerRunMsg:
 		m.refreshQueries()
+		if len(m.queries) > 0 {
+			last := m.queries[len(m.queries)-1]
+			status := "—"
+			if last.StatusCode > 0 {
+				status = fmt.Sprintf("%d", last.StatusCode)
+			}
+			m.composer.setResult(
+				statusColor(last.StatusCode).Render(status)+
+					detailStyle.Render(" · "+last.Duration.Round(time.Millisecond).String()),
+				string(last.Body),
+			)
+		}
 		return m, nil
 
 	case spinner.TickMsg:
@@ -165,6 +182,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
+		}
+
+		// Tab navigation available from every tab (including Query).
+		switch msg.String() {
+		case "esc":
+			m.active = 0
+			m.focusTab()
+			return m, nil
+		case "[", "shift+tab":
+			m.active = (m.active - 1 + len(m.tabs)) % len(m.tabs)
+			m.focusTab()
+			return m, nil
+		case "]", "tab":
+			m.active = (m.active + 1) % len(m.tabs)
+			m.focusTab()
+			return m, nil
+		}
+
+		// Query tab: remaining keys (arrows, numbers, letters) drive the
+		// composer and its panels.
+		if m.active == 4 {
+			return m.handleQueryTabKey(msg)
+		}
+
+		// Data tabs: arrows switch tabs.
+		switch {
 		case key.Matches(msg, keys.NextTab):
 			m.active = (m.active + 1) % len(m.tabs)
 			m.focusTab()
@@ -173,11 +216,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.active = (m.active - 1 + len(m.tabs)) % len(m.tabs)
 			m.focusTab()
 			return m, nil
-		}
-
-		// The Query tab has its own key handling (input + presets + run).
-		if m.active == 4 {
-			return m.handleQueryTabKey(msg)
 		}
 
 		// Delegate remaining keys to the active panel (table).
@@ -193,20 +231,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-
-		// Let the tables grow to fill the available vertical space.
-		h := m.tableHeight()
-		m.jobs.SetHeight(h)
-		m.nodes.SetHeight(h)
-		m.partitions.SetHeight(h)
-
-		m.queryVP.Width = msg.Width - 4
-		h -= 3
-		if h < 2 {
-			h = 2
-		}
-		m.queryVP.Height = h
-		m.refreshQueries()
+		m.layout()
 	}
 
 	return m, nil
@@ -222,40 +247,114 @@ func (m Model) tableHeight() int {
 	return h
 }
 
-// handleQueryTabKey routes keys within the Query tab: presets, run, log
-// scrolling and typing into the builder input.
-func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "1":
-		m.queryInput.SetValue("/jobs")
-		return m, nil
-	case "2":
-		m.queryInput.SetValue("/nodes")
-		return m, nil
-	case "3":
-		m.queryInput.SetValue("/partitions")
-		return m, nil
-	case "enter":
-		path := strings.TrimSpace(m.queryInput.Value())
-		if path == "" {
-			return m, nil
-		}
-		return m, runQueryCmd(m.client, path)
-	case "up", "down", "pgup", "pgdown", "home", "end":
-		m.queryVP, _ = m.queryVP.Update(msg)
-		return m, nil
-	default:
-		var cmd tea.Cmd
-		m.queryInput, cmd = m.queryInput.Update(msg)
-		return m, cmd
+// innerWidth returns the content width available inside the outer frame.
+func (m Model) innerWidth() int {
+	w := m.width - 4
+	if w < 40 {
+		w = 40
 	}
+	return w
 }
 
-// queryTabView renders the Query tab: builder input on top, inspector below.
-func (m Model) queryTabView() string {
-	label := detailStyle.Render("1=jobs 2=nodes 3=partitions  enter=run")
-	input := queryInputStyle.Render(m.queryInput.View())
-	return lipgloss.JoinVertical(lipgloss.Left, label, input, m.queryVP.View())
+// layout recomputes all responsive sizes based on the current terminal size.
+func (m *Model) layout() {
+	inner := m.innerWidth()
+	h := m.tableHeight()
+
+	fitTable(&m.jobs, jobsColumns, inner)
+	fitTable(&m.nodes, nodesColumns, inner)
+	fitTable(&m.partitions, partitionsColumns, inner)
+
+	m.jobs.SetHeight(h)
+	m.nodes.SetHeight(h)
+	m.partitions.SetHeight(h)
+
+	panel := inner - 4
+	if panel < 30 {
+		panel = 30
+	}
+
+	// Split the Query tab vertical space between composer (60%) and history.
+	queryH := h - 2
+	if queryH < 4 {
+		queryH = 4
+	}
+	composerBudget := int(float64(queryH) * 0.6)
+	if composerBudget < 2 {
+		composerBudget = 2
+	}
+	leftW := int(float64(panel) * 0.55)
+	rightW := panel - leftW
+	m.composer.builder.Width = leftW
+	m.composer.builder.Height = composerBudget
+	m.composer.output.Width = rightW
+	m.composer.output.Height = composerBudget
+	m.composer.rebuild()
+
+	m.queryVP.Width = panel
+	m.queryVP.Height = queryH - composerBudget - 3
+	if m.queryVP.Height < 1 {
+		m.queryVP.Height = 1
+	}
+
+	m.refreshQueries()
+}
+
+// Query tab focus states.
+const (
+	focusBuilder = iota
+	focusResponse
+	focusHistory
+)
+
+// handleQueryTabKey routes keys within the Query tab based on the focused
+// panel. 'f' cycles focus; 'r' runs the built request from anywhere.
+func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "f":
+		m.queryFocus = (m.queryFocus + 1) % 3
+		return m, nil
+	case "r":
+		return m, m.composer.run(m.client)
+	}
+
+	switch m.queryFocus {
+	case focusBuilder:
+		var cmd tea.Cmd
+		m.composer, cmd = m.composer.Update(msg)
+		return m, cmd
+	case focusResponse:
+		m.composer.output, _ = m.composer.output.Update(msg)
+		return m, nil
+	case focusHistory:
+		m.queryVP, _ = m.queryVP.Update(msg)
+		return m, nil
+	}
+	return m, nil
+}
+
+// queryTabView renders the Query tab: builder and output side by side, with
+// the request history below. The focused panel is highlighted.
+func (m Model) queryTabView(width int) string {
+	panel := width - 4
+	if panel < 30 {
+		panel = 30
+	}
+	leftW := int(float64(panel) * 0.55)
+	rightW := panel - leftW
+
+	builder := focusedPanel(m.queryFocus == focusBuilder, composerPanelStyle).Width(leftW).Render(
+		panelTitleStyle.Render("Builder") + "\n" + m.composer.builder.View(),
+	)
+	output := focusedPanel(m.queryFocus == focusResponse, outputPanelStyle).Width(rightW).Render(
+		panelTitleStyle.Render("Response") + "\n" + m.composer.output.View(),
+	)
+	top := lipgloss.JoinHorizontal(lipgloss.Top, builder, output)
+
+	history := focusedPanel(m.queryFocus == focusHistory, historyPanelStyle).Width(panel).Render(
+		panelTitleStyle.Render("Request history") + "\n" + m.queryVP.View(),
+	)
+	return lipgloss.JoinVertical(lipgloss.Left, top, history)
 }
 
 // focusTab blurs every table and focuses the one matching the active tab.
@@ -316,10 +415,10 @@ func (m Model) tabsView() string {
 }
 
 // contentView renders the panel corresponding to the active tab.
-func (m Model) contentView() string {
+func (m Model) contentView(width int) string {
 	switch m.active {
 	case 0:
-		return dashboardView()
+		return dashboardView(width)
 	case 1:
 		return m.jobs.View()
 	case 2:
@@ -327,7 +426,7 @@ func (m Model) contentView() string {
 	case 3:
 		return m.partitions.View()
 	case 4:
-		return m.queryTabView()
+		return m.queryTabView(width)
 	default:
 		return ""
 	}
@@ -344,12 +443,7 @@ func (m Model) View() string {
 		height = 30
 	}
 
-	// Width available for the inner content (outer frame takes 2 + 2*1).
-	innerWidth := width - 4
-	if innerWidth < 40 {
-		innerWidth = 40
-	}
-
+	innerWidth := m.innerWidth()
 	divider := dividerStyle.Render(strings.Repeat("─", innerWidth))
 
 	lines := []string{
@@ -357,7 +451,7 @@ func (m Model) View() string {
 		divider,
 		m.tabsView(),
 		divider,
-		m.contentView(),
+		m.contentView(innerWidth),
 	}
 	for _, w := range m.warnings {
 		lines = append(lines, warningStyle.Render("warning: "+w.Description))
