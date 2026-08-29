@@ -6,6 +6,24 @@ with the **Slurm REST API** (the HPC workload manager).
 It lets Slurm administrators and users query cluster and job state without
 SSH-ing into the master node, using only HTTP requests to `slurmrestd`.
 
+## About
+
+**srest** is a terminal user interface (TUI) built with
+[Bubble Tea](https://github.com/charmbracelet/bubbletea) that turns the Slurm
+REST API into a live, interactive dashboard. It lets you:
+
+- Monitor your **jobs**, cluster **nodes** and **partitions** at a glance.
+- Inspect job details — account, partition, time limits, run time, assigned
+  nodes and log paths — without SSH.
+- **Compose API requests** visually (endpoint-aware parameters with options
+  gathered live from the cluster) and inspect the request history.
+- Detect and adapt to the `slurmrestd` **API version** automatically
+  (v0.0.40 – v0.0.45).
+
+It is written in **Go**, styled with
+[Lip Gloss](https://github.com/charmbracelet/lipgloss), and speaks directly to
+`slurmrestd` using JSON Web Token authentication — no SSH, no node login.
+
 ## Status
 
 `srest` is under active development. Current features:
