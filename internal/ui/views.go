@@ -17,28 +17,27 @@ import (
 // terminal width (see fitTable).
 var (
 	jobsColumns = []table.Column{
-		{Title: "JobID", Width: 10},
-		{Title: "Name", Width: 16},
+		{Title: "JobID", Width: 8},
+		{Title: "Name", Width: 14},
 		{Title: "User", Width: 10},
 		{Title: "State", Width: 12},
-		{Title: "Time", Width: 12},
-		{Title: "Nodes", Width: 10},
+		{Title: "Time", Width: 10},
+		{Title: "Nodes", Width: 12},
+		{Title: "Partition", Width: 10},
 	}
 
 	nodesColumns = []table.Column{
 		{Title: "Name", Width: 12},
-		{Title: "State", Width: 10},
+		{Title: "State", Width: 14},
 		{Title: "CPUs", Width: 8},
-		{Title: "Memory", Width: 12},
-		{Title: "Partition", Width: 14},
+		{Title: "Memory", Width: 10},
+		{Title: "Partitions", Width: 16},
 	}
 
 	partitionsColumns = []table.Column{
 		{Title: "Name", Width: 12},
-		{Title: "Avail", Width: 8},
-		{Title: "Nodes", Width: 8},
-		{Title: "TimeLimit", Width: 12},
-		{Title: "State", Width: 10},
+		{Title: "Nodes", Width: 18},
+		{Title: "Total", Width: 8},
 	}
 )
 
@@ -141,17 +140,10 @@ func tableStyles() table.Styles {
 	return s
 }
 
-// newJobsTable builds the Jobs panel with placeholder rows.
+// newJobsTable builds the Jobs panel. Rows are populated from the API.
 func newJobsTable() table.Model {
-	rows := []table.Row{
-		{"42", "sim-train", "alice", "RUNNING", "01:23:45", "c[1-2]"},
-		{"43", "preprocess", "bob", "PENDING", "0:00", ""},
-		{"44", "inference", "alice", "COMPLETED", "00:12:30", "c1"},
-		{"45", "etl", "carol", "RUNNING", "00:45:10", "c2"},
-	}
 	t := table.New(
 		table.WithColumns(jobsColumns),
-		table.WithRows(rows),
 		table.WithFocused(true),
 		table.WithHeight(8),
 	)
@@ -159,17 +151,10 @@ func newJobsTable() table.Model {
 	return t
 }
 
-// newNodesTable builds the Nodes panel with placeholder rows.
+// newNodesTable builds the Nodes panel. Rows are populated from the API.
 func newNodesTable() table.Model {
-	rows := []table.Row{
-		{"c1", "idle", "32", "64GB", "normal"},
-		{"c2", "alloc", "32", "64GB", "normal"},
-		{"c3", "mixed", "32", "128GB", "gpu"},
-		{"c4", "down", "32", "64GB", "normal"},
-	}
 	t := table.New(
 		table.WithColumns(nodesColumns),
-		table.WithRows(rows),
 		table.WithFocused(true),
 		table.WithHeight(8),
 	)
@@ -177,21 +162,29 @@ func newNodesTable() table.Model {
 	return t
 }
 
-// newPartitionsTable builds the Partitions panel with placeholder rows.
+// newPartitionsTable builds the Partitions panel. Rows are populated from the API.
 func newPartitionsTable() table.Model {
-	rows := []table.Row{
-		{"normal", "up", "3", "01:00:00", "idle"},
-		{"gpu", "up", "1", "04:00:00", "idle"},
-		{"debug", "up", "2", "00:30:00", "idle"},
-	}
 	t := table.New(
 		table.WithColumns(partitionsColumns),
-		table.WithRows(rows),
 		table.WithFocused(true),
 		table.WithHeight(8),
 	)
 	t.SetStyles(tableStyles())
 	return t
+}
+
+// formatDuration renders a number of seconds as HH:MM:SS (or M:SS).
+func formatDuration(sec int64) string {
+	if sec <= 0 {
+		return "0:00"
+	}
+	h := sec / 3600
+	m := (sec % 3600) / 60
+	s := sec % 60
+	if h > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", h, m, s)
+	}
+	return fmt.Sprintf("%d:%02d", m, s)
 }
 
 // statCard renders a single dashboard stat card.
@@ -205,22 +198,113 @@ func statCard(label, value string) string {
 	)
 }
 
-// dashboardView renders the Dashboard panel with placeholder stat cards,
-// stacking vertically on narrow terminals.
-func dashboardView(width int) string {
-	title := panelTitleStyle.Render("Cluster overview")
+// hasState reports whether any of the wanted states is present.
+func hasState(states api.StringList, wanted ...string) bool {
+	for _, s := range states {
+		for _, w := range wanted {
+			if s == w {
+				return true
+			}
+		}
+	}
+	return false
+}
 
-	cards := []string{
-		statCard("Nodes", "4"),
-		statCard("Jobs", "12"),
-		statCard("Partitions", "3"),
-		statCard("CPU Load", "37%"),
+// nodeDetailView renders a node's details as key/value lines.
+func nodeDetailView(n api.NodeInfo) string {
+	f := func(name, val string) string {
+		if val == "" {
+			val = "—"
+		}
+		return composerParamName.Render(name) + "  " + composerParamValue.Render(val)
+	}
+	return lipgloss.JoinVertical(lipgloss.Left,
+		f("Name", n.Name),
+		f("State", strings.Join(n.State, ",")),
+		f("CPUs", fmt.Sprintf("%d", n.CPUs)),
+		f("Memory", fmt.Sprintf("%dMB", n.RealMemory)),
+		f("Allocated", fmt.Sprintf("%dMB", n.AllocMemory)),
+		f("Partitions", strings.Join(n.Partitions, ",")),
+	)
+}
+
+// partitionDetailView renders a partition's details as key/value lines.
+func partitionDetailView(p api.PartitionInfo) string {
+	f := func(name, val string) string {
+		if val == "" {
+			val = "—"
+		}
+		return composerParamName.Render(name) + "  " + composerParamValue.Render(val)
+	}
+	return lipgloss.JoinVertical(lipgloss.Left,
+		f("Name", p.Name),
+		f("Nodes", p.Nodes.Configured),
+		f("Total", fmt.Sprintf("%d", p.Nodes.Total)),
+	)
+}
+
+// jobDetailView renders the details of a single job as key/value lines.
+func jobDetailView(j api.JobDetail) string {
+	f := func(name, val string) string {
+		if val == "" {
+			val = "—"
+		}
+		return composerParamName.Render(name) + "  " + composerParamValue.Render(val)
 	}
 
-	if width < 80 {
-		return lipgloss.JoinVertical(lipgloss.Left, title, lipgloss.JoinVertical(lipgloss.Left, cards...))
+	timeLimit := "∞"
+	if !j.TimeLimit.Infinite && j.TimeLimit.Number > 0 {
+		timeLimit = formatDuration(j.TimeLimit.Number * 60)
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, title, lipgloss.JoinHorizontal(lipgloss.Top, cards...))
+	startT := ""
+	if j.StartTime.Number > 0 {
+		startT = time.Unix(j.StartTime.Number, 0).Format("2006-01-02 15:04")
+	}
+	endT := ""
+	if j.EndTime.Number > 0 {
+		endT = time.Unix(j.EndTime.Number, 0).Format("2006-01-02 15:04")
+	}
+
+	lines := []string{
+		f("Job ID", fmt.Sprintf("%d", j.JobID)),
+		f("Name", j.Name),
+		f("User", j.User),
+		f("Account", j.Account),
+		f("Partition", j.Partition),
+		f("State", strings.Join(j.State, ",")),
+		f("Time limit", timeLimit),
+		f("Run time", formatDuration(j.RunTime)),
+		f("Start", startT),
+		f("End", endT),
+		f("Nodes", j.Nodes),
+		f("Node count", fmt.Sprintf("%d", j.NodeCount.Number)),
+		f("CPUs", fmt.Sprintf("%d", j.CPUs.Number)),
+		f("Stdout", j.StandardOutput),
+		f("Stderr", j.StandardError),
+	}
+
+	// Only show exit info when the job has finished. While pending/running the
+	// "exit_code" field holds a misleading default, and the real state is
+	// already shown above.
+	if jobFinished(j) {
+		lines = append(lines,
+			f("Exit code", strings.Join(j.ExitCode.Status, ",")),
+			f("Return code", fmt.Sprintf("%d", j.ExitCode.ReturnCode.Number)),
+		)
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+}
+
+// jobFinished reports whether a job has reached a terminal state.
+func jobFinished(j api.JobDetail) bool {
+	for _, s := range j.State {
+		switch s {
+		case "COMPLETED", "FAILED", "CANCELLED", "TIMEOUT", "OUT_OF_MEMORY", "PREEMPTED", "NODE_FAIL", "DEADLINE":
+			return true
+		}
+	}
+	return false
 }
 
 // statusColor returns the style used to render an HTTP status code.

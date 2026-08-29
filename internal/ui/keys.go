@@ -32,11 +32,11 @@ var keys = keyMap{
 		key.WithHelp("q", "quit"),
 	),
 	NextTab: key.NewBinding(
-		key.WithKeys("tab", "]", "right", "l"),
+		key.WithKeys("tab", "]"),
 		key.WithHelp("tab/]", "next tab"),
 	),
 	PrevTab: key.NewBinding(
-		key.WithKeys("shift+tab", "[", "left", "h"),
+		key.WithKeys("shift+tab", "["),
 		key.WithHelp("shift+tab/[", "prev tab"),
 	),
 	Home: key.NewBinding(

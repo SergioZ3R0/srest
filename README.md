@@ -8,13 +8,37 @@ SSH-ing into the master node, using only HTTP requests to `slurmrestd`.
 
 ## Status
 
-Currently in early development (MVP):
+`srest` is under active development. Current features:
 
 - [x] HTTP client with JWT authentication (`X-SLURM-USER-TOKEN`, `X-SLURM-USER-NAME`).
 - [x] Auto-detection of the `data_parser` version (v0.0.40 – v0.0.45) or a version pinned via configuration.
-- [x] Asynchronous connectivity check (`/ping`) using Bubble Tea.
 - [x] Version-gating and reporting of `warnings`/`errors` returned by slurmrestd.
-- [ ] Jobs, nodes and partitions views.
+- [x] Dashboard with real cluster stats (nodes up/down, jobs by state, partitions, accounts).
+- [x] Real-time views: Jobs, Nodes, Partitions (with per-item detail panels).
+- [x] Table search/filter (`/`).
+- [x] Query builder/inspector: a Postman-style composer with endpoint-aware parameters, options gathered from the cluster (partitions, accounts) and a request history.
+- [ ] Job submission and job actions (cancel/requeue).
+
+## Features
+
+**Tabs** (navigate with `tab`/`shift+tab` or `[`/`]`, `esc` returns to Dashboard):
+
+- **Dashboard** — real cluster overview: nodes up/down, jobs running/pending/completed/failed, partitions and accounts.
+- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths).
+- **Nodes** — cluster nodes with state, CPUs, memory and partitions; select a node to see its detail.
+- **Partitions** — partition list with configured/total nodes.
+- **Query** — a request composer: pick an endpoint (`1-5`), fill or cycle parameters (`enter` to edit, `←`/`→` to cycle options, `del` to clear), and run (`r`). The response and request history are shown alongside. Partition and account options are gathered live from the cluster.
+
+**Key bindings**
+
+| Key | Action |
+| --- | ------ |
+| `q` / `Ctrl+C` | quit |
+| `tab` / `]`, `shift+tab` / `[` | next / previous tab |
+| `esc` | go to Dashboard |
+| `/` | filter the current table |
+| `r` | refresh (Jobs tab) |
+| `?` | toggle help |
 
 ## Stack
 

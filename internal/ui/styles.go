@@ -135,4 +135,9 @@ var (
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color("63")).
 				Padding(0, 1)
+
+	// searchStyle formats the table filter input.
+	searchStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("12")).
+			Padding(0, 0, 1, 0)
 )

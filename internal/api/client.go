@@ -110,6 +110,87 @@ func (c *Client) Detect(ctx context.Context) (Version, error) {
 	return Version{}, fmt.Errorf("no supported API version found")
 }
 
+// Jobs returns the jobs visible to the authenticated user. slurmrestd only
+// exposes the requesting user's jobs (unless the caller is privileged).
+func (c *Client) Jobs(ctx context.Context) ([]JobInfo, error) {
+	v, ok := c.Version()
+	if !ok {
+		return nil, fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+
+	var resp struct {
+		Jobs []JobInfo `json:"jobs"`
+	}
+	if err := c.get(ctx, v, "/jobs", &resp); err != nil {
+		return nil, err
+	}
+	return resp.Jobs, nil
+}
+
+// Job returns the full record of a single job.
+func (c *Client) Job(ctx context.Context, id uint32) (JobDetail, error) {
+	v, ok := c.Version()
+	if !ok {
+		return JobDetail{}, fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+
+	var resp struct {
+		Jobs []JobDetail `json:"jobs"`
+	}
+	if err := c.get(ctx, v, fmt.Sprintf("/job/%d", id), &resp); err != nil {
+		return JobDetail{}, err
+	}
+	if len(resp.Jobs) == 0 {
+		return JobDetail{}, fmt.Errorf("job %d not found", id)
+	}
+	return resp.Jobs[0], nil
+}
+
+// Nodes returns the cluster nodes.
+func (c *Client) Nodes(ctx context.Context) ([]NodeInfo, error) {
+	v, ok := c.Version()
+	if !ok {
+		return nil, fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+	var resp struct {
+		Nodes []NodeInfo `json:"nodes"`
+	}
+	if err := c.get(ctx, v, "/nodes", &resp); err != nil {
+		return nil, err
+	}
+	return resp.Nodes, nil
+}
+
+// PartitionList returns detailed partition information.
+func (c *Client) PartitionList(ctx context.Context) ([]PartitionInfo, error) {
+	v, ok := c.Version()
+	if !ok {
+		return nil, fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+	var resp struct {
+		Partitions []PartitionInfo `json:"partitions"`
+	}
+	if err := c.get(ctx, v, "/partitions", &resp); err != nil {
+		return nil, err
+	}
+	return resp.Partitions, nil
+}
+
+// Accounts returns the accounts visible to the authenticated user (slurmdb).
+func (c *Client) Accounts(ctx context.Context) ([]AccountInfo, error) {
+	v, ok := c.Version()
+	if !ok {
+		return nil, fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+	var resp struct {
+		Accounts []AccountInfo `json:"accounts"`
+	}
+	if err := c.get(ctx, v, "/slurmdb/"+v.String()+"/accounts", &resp); err != nil {
+		return nil, err
+	}
+	return resp.Accounts, nil
+}
+
 // Partitions returns the names of all partitions visible to the user. Used by
 // the query builder to offer partition values as selectable options.
 func (c *Client) Partitions(ctx context.Context) ([]string, error) {

@@ -84,3 +84,99 @@ type PingInfo struct {
 	// Warnings are the warnings reported by slurmrestd.
 	Warnings []Warning
 }
+
+// StringList unmarshals a JSON field that may be a string or an array of
+// strings (some Slurm fields vary between versions).
+type StringList []string
+
+// UnmarshalJSON accepts a string, an array of strings or null.
+func (s *StringList) UnmarshalJSON(b []byte) error {
+	if len(b) == 0 || string(b) == "null" {
+		*s = nil
+		return nil
+	}
+	var arr []string
+	if err := json.Unmarshal(b, &arr); err == nil {
+		*s = arr
+		return nil
+	}
+	var str string
+	if err := json.Unmarshal(b, &str); err == nil {
+		*s = []string{str}
+		return nil
+	}
+	return nil
+}
+
+// JobInfo is a summarized Slurm job as returned by GET /slurm/vX/jobs.
+type JobInfo struct {
+	JobID     uint32     `json:"job_id"`
+	Name      string     `json:"name"`
+	User      string     `json:"user_name"`
+	State     StringList `json:"job_state"`
+	RunTime   int64      `json:"run_time"`
+	Nodes     string     `json:"nodes"`
+	Partition string     `json:"partition"`
+}
+
+// NoVal models Slurm's optional numeric struct {set, infinite, number}.
+type NoVal struct {
+	Set      bool  `json:"set"`
+	Infinite bool  `json:"infinite"`
+	Number   int64 `json:"number"`
+}
+
+// ExitCode describes a job's exit status.
+type ExitCode struct {
+	Status     StringList `json:"status"`
+	ReturnCode NoVal      `json:"return_code"`
+	Signal     struct {
+		Name string `json:"name"`
+	} `json:"signal"`
+}
+
+// JobDetail is a full job record from GET /slurm/vX/job/{job_id}.
+type JobDetail struct {
+	JobID          uint32     `json:"job_id"`
+	Name           string     `json:"name"`
+	User           string     `json:"user_name"`
+	Account        string     `json:"account"`
+	Partition      string     `json:"partition"`
+	State          StringList `json:"job_state"`
+	TimeLimit      NoVal      `json:"time_limit"` // minutes
+	RunTime        int64      `json:"run_time"`   // seconds
+	StartTime      NoVal      `json:"start_time"` // unix
+	EndTime        NoVal      `json:"end_time"`
+	Nodes          string     `json:"nodes"`
+	NodeCount      NoVal      `json:"node_count"`
+	CPUs           NoVal      `json:"cpus"`
+	StandardOutput string     `json:"standard_output"`
+	StandardError  string     `json:"standard_error"`
+	ExitCode       ExitCode   `json:"exit_code"`
+}
+
+// NodeInfo is a Slurm node as returned by GET /slurm/vX/nodes.
+type NodeInfo struct {
+	Name        string     `json:"name"`
+	State       StringList `json:"state"`
+	CPUs        int        `json:"cpus"`
+	RealMemory  int64      `json:"real_memory"` // MB
+	AllocMemory int64      `json:"alloc_memory"`
+	Partitions  StringList `json:"partitions"`
+}
+
+// PartitionInfo is a Slurm partition as returned by GET /slurm/vX/partitions.
+type PartitionInfo struct {
+	Name  string `json:"name"`
+	Nodes struct {
+		Configured string `json:"configured"`
+		Total      int    `json:"total"`
+	} `json:"nodes"`
+}
+
+// AccountInfo is a Slurm account from GET /slurmdb/vX/accounts.
+type AccountInfo struct {
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	Organization string `json:"organization"`
+}

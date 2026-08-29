@@ -205,6 +205,16 @@ func (c *composer) stopEdit() {
 	c.rebuild()
 }
 
+// clearValue empties the selected parameter's value.
+func (c *composer) clearValue() {
+	ep := endpoints[c.active]
+	if len(ep.params) == 0 {
+		return
+	}
+	ep.params[c.cursor].value = ""
+	c.rebuild()
+}
+
 // cycleOption moves the selected parameter's value through its options.
 func (c *composer) cycleOption(delta int) {
 	ep := endpoints[c.active]
@@ -233,6 +243,19 @@ func (c *composer) setPartitionOptions(names []string) {
 	for i := range endpoints {
 		for j := range endpoints[i].params {
 			if endpoints[i].params[j].name == "partition" {
+				endpoints[i].params[j].options = names
+			}
+		}
+	}
+	c.rebuild()
+}
+
+// setAccountOptions feeds the accounts gathered from the cluster into the
+// "account" parameter of the jobs endpoint.
+func (c *composer) setAccountOptions(names []string) {
+	for i := range endpoints {
+		for j := range endpoints[i].params {
+			if endpoints[i].params[j].name == "account" {
 				endpoints[i].params[j].options = names
 			}
 		}
@@ -290,7 +313,7 @@ func (c composer) renderBuilder() string {
 		}
 	}
 
-	sb.WriteString(composerHint.Render("enter=edit ←/→=option ↑/↓=nav f=focus 1-5=endpoint r=run") + "\n")
+	sb.WriteString(composerHint.Render("enter=edit ←/→=option ↑/↓=nav del=clear f=focus 1-5=endpoint r=run") + "\n")
 	return sb.String()
 }
 
@@ -328,19 +351,17 @@ func (c composer) Update(msg tea.KeyMsg) (composer, tea.Cmd) {
 		c.move(1)
 	case "enter":
 		c.startEdit()
+	case "delete", "backspace", "x":
+		c.clearValue()
 	case "left", "h":
-		// If the selected parameter has options, cycle them; otherwise move
-		// to the previous endpoint.
+		// Only cycle the selected parameter's options; endpoint switching is
+		// done with the number keys.
 		if c.hasOptionsAtCursor() {
 			c.cycleOption(-1)
-		} else {
-			c.selectEndpoint((c.active - 1 + len(endpoints)) % len(endpoints))
 		}
 	case "right", "l":
 		if c.hasOptionsAtCursor() {
 			c.cycleOption(1)
-		} else {
-			c.selectEndpoint((c.active + 1) % len(endpoints))
 		}
 	case "pgup", "pgdown", "home", "end":
 		c.output, _ = c.output.Update(msg)
