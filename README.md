@@ -1,4 +1,13 @@
-# srest
+<div align="center">
+  <img src="https://raw.githubusercontent.com/SergioZ3R0/srest/main/srest.svg" alt="srest" width="180">
+</div>
+
+<h1 align="center">srest</h1>
+<p align="center">
+  <b> TUI client for the Slurm REST API</b><br>
+  <i> View jobs, nodes, partitions &bull; Build requests from your terminal </i><br>
+  <a href="https://srest.scszero.com/">srest.scszero.com</a>
+</p>
 
 `srest` is a **TUI** (terminal user interface) client for interacting remotely
 with the **Slurm REST API** (the HPC workload manager).
