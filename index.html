@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>srest | Slurm REST API TUI</title>
+    <style>
+        :root {
+            --bg-color: #1A1B26;
+            --text-main: #cdd6f4;
+            --slurm-orange: #FF9900;
+            --slurm-cyan: #00A3CC;
+            --terminal-bg: #111219;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 100px 20px 50px;
+            max-width: 800px;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin: 20px 0 10px;
+            letter-spacing: -1px;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: #a6adc8;
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+
+        .terminal-window {
+            background-color: var(--terminal-bg);
+            border: 1px solid #4C566A;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 700px;
+            text-align: left;
+            margin: 0 auto 50px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .terminal-header {
+            background-color: #24283B;
+            padding: 10px 15px;
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid #4C566A;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .dot.red { background-color: #FF5F56; }
+        .dot.yellow { background-color: #FFBD2E; }
+        .dot.green { background-color: #27C93F; }
+
+        .terminal-body {
+            padding: 20px;
+            font-family: "Fira Code", "Consolas", monospace;
+            color: #A3BE8C;
+        }
+
+        .prompt { color: var(--slurm-cyan); }
+        .command { color: var(--text-main); }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--slurm-orange);
+            color: #000;
+        }
+        
+        .btn-primary:hover {
+            background-color: #FFB347;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-main);
+            border: 1px solid #4C566A;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hero">
+        <!-- Reemplaza src con la ruta a tu logo.svg -->
+        <img src="logo.svg" alt="srest logo" width="300">
+        
+        <h1>The Slurm REST API TUI</h1>
+        <p>A fast, terminal-based user interface to interact with your HPC cluster's Slurm REST API. Monitor nodes, manage jobs, and inspect configurations without leaving your shell.</p>
+        
+        <div class="buttons">
+            <a href="https://github.com/SergioZ3R0/srest" class="btn btn-primary">View on GitHub</a>
+            <a href="#install" class="btn btn-secondary">Documentation</a>
+        </div>
+    </div>
+
+    <div class="terminal-window">
+        <div class="terminal-header">
+            <div class="dot red"></div>
+            <div class="dot yellow"></div>
+            <div class="dot green"></div>
+        </div>
+        <div class="terminal-body">
+            <span class="prompt">$</span> <span class="command">git clone https://github.com/SergioZ3R0/srest.git</span><br>
+            <span class="prompt">$</span> <span class="command">cd srest</span><br>
+            <span class="prompt">$</span> <span class="command">make build</span><br>
+            <span class="prompt">$</span> <span class="command">./srest</span><br>
+            <br>
+            <span style="color: #4C566A;">// Connecting to Slurm REST API v0.0.44...</span><br>
+            <span style="color: #FF9900;">✓ Connected successfully</span>
+        </div>
+    </div>
+
+</body>
+</html>

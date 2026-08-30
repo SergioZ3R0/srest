@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <!-- Fondo estilo Terminal -->
+  <rect width="400" height="400" rx="80" fill="#1A1B26" />
+
+  <!-- Llave Izquierda { -->
+  <path d="M 125 70 H 95 C 70 70 70 95 70 115 V 175 C 70 190 50 200 50 200 C 50 200 70 210 70 225 V 285 C 70 305 70 330 95 330 H 125" 
+        fill="none" stroke="#FF9900" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Llave Derecha } -->
+  <path d="M 275 70 H 305 C 330 70 330 95 330 115 V 175 C 330 190 350 200 350 200 C 350 200 330 210 330 225 V 285 C 330 305 330 330 305 330 H 275" 
+        fill="none" stroke="#FF9900" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Conexiones -->
+  <g stroke="#00A3CC" stroke-width="6" stroke-linecap="round">
+    <line x1="200" y1="110" x2="200" y2="185" />
+    <line x1="200" y1="110" x2="135" y2="260" />
+    <line x1="200" y1="110" x2="265" y2="260" />
+    <line x1="200" y1="185" x2="135" y2="260" />
+    <line x1="200" y1="185" x2="265" y2="260" />
+  </g>
+
+  <!-- Nodos -->
+  <g fill="#00A3CC">
+    <circle cx="200" cy="110" r="20" />
+    <circle cx="200" cy="185" r="20" />
+    <circle cx="135" cy="260" r="20" />
+    <circle cx="265" cy="260" r="20" />
+  </g>
+</svg>
