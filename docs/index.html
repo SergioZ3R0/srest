@@ -4,148 +4,450 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>srest | Slurm REST API TUI</title>
+    <meta name="description" content="srest is a terminal user interface for the Slurm REST API. Monitor jobs, nodes and partitions, and compose API requests from your terminal — no SSH needed.">
+    <meta name="keywords" content="Slurm TUI, slurmrestd client, HPC terminal UI, Slurm REST API, job monitor, Bubble Tea, cluster management, sbatch alternative">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="srest | Slurm REST API TUI">
+    <meta property="og:description" content="Monitor jobs, nodes and partitions, and compose Slurm REST API requests from your terminal.">
+    <meta property="og:url" content="https://srest.scszero.com/">
+    <meta property="og:type" content="software">
+    <meta property="og:site_name" content="srest">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="srest | Slurm REST API TUI">
+    <meta name="twitter:description" content="Monitor jobs, nodes and partitions, and compose Slurm REST API requests from your terminal.">
+
+    <link rel="canonical" href="https://srest.scszero.com/">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "srest",
+        "operatingSystem": "Linux",
+        "applicationCategory": "DeveloperApplication",
+        "description": "A terminal user interface for the Slurm REST API: monitor jobs, nodes and partitions, and compose requests from the terminal.",
+        "url": "https://srest.scszero.com/",
+        "sameAs": "https://github.com/SergioZ3R0/srest",
+        "offers": {
+            "@type": "Offer",
+            "price": 0,
+            "priceCurrency": "USD"
+        },
+        "author": {
+            "@type": "Person",
+            "name": "SergioZ3R0",
+            "url": "https://github.com/SergioZ3R0"
+        }
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --bg-color: #1A1B26;
-            --text-main: #cdd6f4;
-            --slurm-orange: #FF9900;
-            --slurm-cyan: #00A3CC;
-            --terminal-bg: #111219;
+            --bg: #0B0E10;
+            --surface: #14181B;
+            --accent: #EFB72B;
+            --accent-soft: #FFD76A;
+            --accent-warn: #FF9900;
+            --accent-fail: #FF5C5C;
+            --text: #E8ECEF;
+            --muted: #7C8791;
+            --border: rgba(255,255,255,0.08);
+            --radius: 12px;
+            --font-mono: 'IBM Plex Mono', 'JetBrains Mono', 'Fira Code', monospace;
+            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
         }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+        nav {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
             align-items: center;
         }
+        nav .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        nav .logo svg { width: 44px; height: 44px; }
+        nav .logo span { font-weight: 700; font-size: 1.3rem; color: var(--accent); font-family: var(--font-mono); }
+        nav a:not(.logo) { color: var(--muted); text-decoration: none; margin-left: 24px; font-size: 0.9rem; transition: color .2s; font-family: var(--font-mono); font-size: 0.85rem; }
+        nav a:not(.logo):hover { color: var(--text); }
 
-        .hero {
-            text-align: center;
-            padding: 100px 20px 50px;
-            max-width: 800px;
-        }
-
-        .hero h1 {
-            font-size: 3rem;
-            margin: 20px 0 10px;
-            letter-spacing: -1px;
-        }
-
-        .hero p {
-            font-size: 1.2rem;
-            color: #a6adc8;
-            margin-bottom: 40px;
-            line-height: 1.5;
-        }
-
-        .terminal-window {
-            background-color: var(--terminal-bg);
-            border: 1px solid #4C566A;
-            border-radius: 8px;
-            width: 100%;
-            max-width: 700px;
-            text-align: left;
-            margin: 0 auto 50px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            overflow: hidden;
-        }
-
-        .terminal-header {
-            background-color: #24283B;
-            padding: 10px 15px;
-            display: flex;
-            gap: 8px;
-            border-bottom: 1px solid #4C566A;
-        }
-
-        .dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-        .dot.red { background-color: #FF5F56; }
-        .dot.yellow { background-color: #FFBD2E; }
-        .dot.green { background-color: #27C93F; }
-
-        .terminal-body {
-            padding: 20px;
-            font-family: "Fira Code", "Consolas", monospace;
-            color: #A3BE8C;
-        }
-
-        .prompt { color: var(--slurm-cyan); }
-        .command { color: var(--text-main); }
-        
-        .buttons {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-        }
-
+        header { padding: 80px 0 60px; text-align: center; }
+        header .logo-big svg { width: 180px; height: 180px; margin-bottom: 32px; }
+        header h1 { font-size: 3.5rem; font-weight: 800; letter-spacing: -0.02em; font-family: var(--font-mono); }
+        header h1 span { color: var(--accent); }
+        header p { font-size: 1.25rem; color: var(--muted); max-width: 640px; margin: 16px auto 32px; }
         .btn {
-            padding: 12px 24px;
-            border-radius: 6px;
+            display: inline-block;
+            padding: 12px 32px;
+            border-radius: var(--radius);
             text-decoration: none;
-            font-weight: bold;
-            transition: all 0.2s;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all .2s;
+            margin: 0 8px;
+            font-family: var(--font-mono);
         }
+        .btn-primary { background: var(--accent); color: #000; }
+        .btn-primary:hover { background: var(--accent-soft); transform: translateY(-1px); }
+        .btn-outline { border: 1px solid var(--border); color: var(--text); }
+        .btn-outline:hover { border-color: var(--muted); transform: translateY(-1px); }
 
-        .btn-primary {
-            background-color: var(--slurm-orange);
+        .badge-wrap { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-bottom: 20px; }
+        .badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+        }
+        .badge-go { background: #1a3a5c; color: var(--accent); }
+        .badge-tui { background: rgba(239,183,43,0.12); color: var(--accent); }
+        .badge-hpc { background: rgba(255,153,0,0.12); color: var(--accent-warn); }
+        .badge-api { background: rgba(255,92,92,0.12); color: var(--accent-fail); }
+
+        section { padding: 80px 0; }
+        section h2 { font-size: 2rem; font-weight: 700; margin-bottom: 48px; text-align: center; font-family: var(--font-mono); color: var(--accent); }
+
+        .hero-terminal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin: 40px auto;
+            max-width: 640px;
+            min-height: 260px;
+            text-align: left;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            line-height: 1.7;
+            overflow-x: auto;
+        }
+        .hero-terminal .prompt { color: var(--accent); }
+        .hero-terminal .output { color: var(--muted); }
+        .hero-terminal .highlight { color: var(--accent); }
+        .hero-terminal .warn { color: var(--accent-warn); }
+        .hero-terminal .cursor { display: inline-block; width: 8px; height: 1em; background: var(--accent); animation: blink 1s step-end infinite; vertical-align: text-bottom; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+        .feature {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            transition: border-color .2s, transform .2s;
+        }
+        .feature:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .feature .icon { font-size: 2rem; margin-bottom: 16px; }
+        .feature h3 { font-size: 1.1rem; margin-bottom: 8px; color: var(--accent); font-family: var(--font-mono); }
+        .feature p { font-size: 0.9rem; color: var(--muted); }
+
+        .code-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 40px 20px 24px;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 16px 0;
+            max-width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .code-block .cmd { color: var(--accent); white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .code-block .comment { color: var(--muted); }
+
+        .steps { counter-reset: step; max-width: 600px; margin: 0 auto; }
+        .step {
+            counter-increment: step;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            transition: border-color .2s;
+        }
+        .step:hover { border-color: var(--accent); }
+        .step::before {
+            content: counter(step);
+            background: var(--accent);
             color: #000;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+            font-family: var(--font-mono);
         }
-        
-        .btn-primary:hover {
-            background-color: #FFB347;
-        }
+        .step-content { flex: 1; min-width: 0; }
+        .step-content h3 { font-size: 1rem; margin-bottom: 4px; font-family: var(--font-mono); }
+        .step-content p { font-size: 0.9rem; color: var(--muted); }
 
-        .btn-secondary {
-            background-color: transparent;
-            color: var(--text-main);
-            border: 1px solid #4C566A;
+        .faq { max-width: 680px; margin: 0 auto; }
+        .faq details {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 24px;
+            margin-bottom: 12px;
+            transition: border-color .2s;
         }
+        .faq details[open] { border-color: var(--accent); }
+        .faq summary {
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            color: var(--text);
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .faq summary::-webkit-details-marker { display: none; }
+        .faq summary::after { content: "+"; font-size: 1.3rem; color: var(--accent); transition: transform .2s; }
+        .faq details[open] summary::after { content: "−"; }
+        .faq details p { margin-top: 12px; font-size: 0.9rem; color: var(--muted); line-height: 1.7; }
+        .faq details p code { background: var(--border); padding: 1px 6px; border-radius: 4px; font-size: 0.85rem; font-family: var(--font-mono); }
 
-        .btn-secondary:hover {
-            border-color: var(--text-main);
+        footer { border-top: 1px solid var(--border); padding: 40px 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
+        footer a { color: var(--accent); text-decoration: none; }
+
+        @media (max-width: 768px) {
+            .badge { font-size: 0.7rem; padding: 3px 10px; }
+            .hero-terminal { font-size: 0.7rem; padding: 14px 16px; }
+        }
+        @media (max-width: 640px) {
+            header h1 { font-size: 2.4rem; }
+            header p { font-size: 1rem; }
+            nav a:not(.logo) { margin-left: 12px; font-size: 0.8rem; }
+            .features { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
+    <div class="container">
+        <nav role="navigation" aria-label="Main navigation">
+            <a href="#" class="logo" aria-label="srest home">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="44" height="44" role="img" aria-label="srest logo: terminal with braces">
+                    <rect width="200" height="200" rx="40" fill="#0B0E10"/>
+                    <rect x="40" y="40" width="120" height="120" rx="12" fill="#14181B" stroke="#EFB72B" stroke-width="4"/>
+                    <path d="M 78 75 H 62 C 52 75 52 85 52 92 V 108 C 52 115 45 120 45 120 C 45 120 52 125 52 132 V 148 C 52 155 52 165 62 165 H 78" fill="none" stroke="#EFB72B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 122 75 H 138 C 148 75 148 85 148 92 V 108 C 148 115 155 120 155 120 C 155 120 148 125 148 132 V 148 C 148 155 148 165 138 165 H 122" fill="none" stroke="#EFB72B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="100" y1="88" x2="100" y2="145" stroke="#EFB72B" stroke-width="5" stroke-linecap="round"/>
+                    <circle cx="100" cy="145" r="7" fill="#EFB72B"/>
+                </svg>
+                <span>srest</span>
+            </a>
+            <div>
+                <a href="https://github.com/SergioZ3R0/srest" aria-label="srest on GitHub">GitHub</a>
+                <a href="/docs.html" aria-label="srest documentation">Docs</a>
+            </div>
+        </nav>
 
-    <div class="hero">
-        <!-- Reemplaza src con la ruta a tu logo.svg -->
-        <img src="logo.svg" alt="srest logo" width="300">
-        
-        <h1>The Slurm REST API TUI</h1>
-        <p>A fast, terminal-based user interface to interact with your HPC cluster's Slurm REST API. Monitor nodes, manage jobs, and inspect configurations without leaving your shell.</p>
-        
-        <div class="buttons">
+        <header role="banner">
+            <div class="logo-big">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="180" height="180" role="img" aria-label="srest large logo: terminal with braces">
+                    <rect width="200" height="200" rx="40" fill="#0B0E10"/>
+                    <rect x="40" y="40" width="120" height="120" rx="12" fill="#14181B" stroke="#EFB72B" stroke-width="5"/>
+                    <path d="M 78 75 H 62 C 52 75 52 85 52 92 V 108 C 52 115 45 120 45 120 C 45 120 52 125 52 132 V 148 C 52 155 52 165 62 165 H 78" fill="none" stroke="#EFB72B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 122 75 H 138 C 148 75 148 85 148 92 V 108 C 148 115 155 120 155 120 C 155 120 148 125 148 132 V 148 C 148 155 148 165 138 165 H 122" fill="none" stroke="#EFB72B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="100" y1="86" x2="100" y2="146" stroke="#EFB72B" stroke-width="6" stroke-linecap="round"/>
+                    <circle cx="100" cy="146" r="8" fill="#EFB72B"/>
+                </svg>
+            </div>
+            <h1>s<span>rest</span></h1>
+            <p>
+                A terminal user interface for the <strong>Slurm REST API</strong>.
+                Monitor jobs, nodes and partitions, inspect job details and compose
+                API requests from your shell — no SSH into the master node.
+            </p>
+            <div class="badge-wrap">
+                <span class="badge badge-go">Go 1.24+</span>
+                <span class="badge badge-tui">Bubble Tea TUI</span>
+                <span class="badge badge-hpc">slurmrestd</span>
+                <span class="badge badge-hpc">v0.0.40–45</span>
+                <span class="badge badge-api">JWT</span>
+            </div>
+            <div class="hero-terminal" aria-label="Live terminal output from srest" id="hero-terminal">
+                <span id="terminal-text">$ go build -o srest .</span><span class="cursor" id="terminal-cursor"></span>
+            </div>
             <a href="https://github.com/SergioZ3R0/srest" class="btn btn-primary">View on GitHub</a>
-            <a href="#install" class="btn btn-secondary">Documentation</a>
-        </div>
+            <a href="/docs.html" class="btn btn-outline">Documentation</a>
+        </header>
+
+        <main>
+            <section aria-labelledby="features-heading">
+                <h2 id="features-heading">Why srest</h2>
+                <div class="features">
+                    <article class="feature">
+                        <div class="icon" role="img" aria-label="briefcase icon">🗂️</div>
+                        <h3>Monitor your jobs</h3>
+                        <p>See your jobs with account, partition, time limits, run time, assigned nodes and log paths — without SSH.</p>
+                    </article>
+                    <article class="feature">
+                        <div class="icon" role="img" aria-label="server icon">🖥️</div>
+                        <h3>Nodes &amp; partitions</h3>
+                        <p>Live views of cluster nodes (state, CPUs, memory) and partitions, with per-item detail panels.</p>
+                    </article>
+                    <article class="feature">
+                        <div class="icon" role="img" aria-label="builder icon">🧩</div>
+                        <h3>Query builder</h3>
+                        <p>A Postman-style request composer with endpoint-aware parameters and options gathered live from the cluster.</p>
+                    </article>
+                    <article class="feature">
+                        <div class="icon" role="img" aria-label="versions icon">🔀</div>
+                        <h3>Version auto-detection</h3>
+                        <p>Detects the slurmrestd data_parser version (v0.0.40–45) and version-gates fields to avoid invalid requests.</p>
+                    </article>
+                    <article class="feature">
+                        <div class="icon" role="img" aria-label="dashboard icon">📊</div>
+                        <h3>Real dashboard</h3>
+                        <p>Cluster overview: nodes up/down, jobs by state, partitions and accounts at a glance.</p>
+                    </article>
+                    <article class="feature">
+                        <div class="icon" role="img" aria-label="search icon">🔍</div>
+                        <h3>Table search</h3>
+                        <p>Filter jobs, nodes and partitions instantly with a live search box.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section aria-labelledby="quickstart-heading">
+                <h2 id="quickstart-heading">Quick Start</h2>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-content">
+                            <h3>Build</h3>
+                            <div class="code-block"><span class="cmd">go build -o srest .</span></div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-content">
+                            <h3>Configure</h3>
+                            <p>Point it at your slurmrestd and authenticate with a JWT</p>
+                            <div class="code-block">
+                                <span class="comment">export SLURM_URL=http://localhost:6820</span><br>
+                                <span class="comment">export SLURM_JWT=$(scontrol token | cut -d= -f2)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-content">
+                            <h3>Run</h3>
+                            <div class="code-block"><span class="cmd">./srest</span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section aria-labelledby="faq-heading">
+                <h2 id="faq-heading">FAQ</h2>
+                <div class="faq">
+                    <details>
+                        <summary>Does srest need SSH access to the cluster?</summary>
+                        <p>No. srest talks to <code>slurmrestd</code> over HTTP using JWT authentication, so it only needs network access to the REST API endpoint — exactly what it is designed for.</p>
+                    </details>
+                    <details>
+                        <summary>Can I see the contents of job logs?</summary>
+                        <p>The Slurm REST API exposes the <em>location</em> of logs (<code>standard_output</code>/<code>standard_error</code>) but not their contents, since those are files on the cluster filesystem. srest shows the log paths; reading the actual files requires filesystem access, which is out of scope for the REST API.</p>
+                    </details>
+                    <details>
+                        <summary>Which Slurm API versions are supported?</summary>
+                        <p>srest auto-detects the <code>data_parser</code> version served by the cluster (v0.0.40 through v0.0.45) and version-gates request fields so it does not send parameters the version does not support.</p>
+                    </details>
+                </div>
+            </section>
+        </main>
+
+        <footer role="contentinfo">
+            <p>Apache 2.0 &middot; Built by <a href="https://github.com/SergioZ3R0">SergioZ3R0</a></p>
+        </footer>
     </div>
 
-    <div class="terminal-window">
-        <div class="terminal-header">
-            <div class="dot red"></div>
-            <div class="dot yellow"></div>
-            <div class="dot green"></div>
-        </div>
-        <div class="terminal-body">
-            <span class="prompt">$</span> <span class="command">git clone https://github.com/SergioZ3R0/srest.git</span><br>
-            <span class="prompt">$</span> <span class="command">cd srest</span><br>
-            <span class="prompt">$</span> <span class="command">make build</span><br>
-            <span class="prompt">$</span> <span class="command">./srest</span><br>
-            <br>
-            <span style="color: #4C566A;">// Connecting to Slurm REST API v0.0.44...</span><br>
-            <span style="color: #FF9900;">✓ Connected successfully</span>
-        </div>
-    </div>
+    <script>
+        (function typeTerminal() {
+            var el = document.getElementById('terminal-text');
+            var cursor = document.getElementById('terminal-cursor');
+            if (!el) return;
 
+            var lines = [
+                [{t:'prompt',v:'$ '},{t:'highlight',v:'go'},{t:'output',v:' build -o srest .'}],
+                [{t:'output',v:'  '},{t:'highlight',v:'Connected'},{t:'output',v:' · Slurm 26.05.2 · API v0.0.45'}],
+                [{t:'output',v:'  Dashboard:'},{t:'highlight',v:' Nodes 2/2'},{t:'output',v:' ·'},{t:'highlight',v:' Jobs running 1'},{t:'output',v:' ·'},{t:'highlight',v:' Partitions 2'}],
+                [{t:'output',v:'  Jobs:'}],
+                [{t:'output',v:'  42   sim-train   alice   RUNNING   01:23:45   c[1-2]'}],
+                [{t:'prompt',v:'$ '},{t:'highlight',v:'./srest'},{t:'output',v:' --tab query'}],
+            ];
+
+            var lineIdx = 0, spanIdx = 0, charIdx = 0;
+            var typedLines = [];
+
+            function renderAll() {
+                var html = '';
+                for (var i = 0; i < typedLines.length; i++) html += typedLines[i] + '<br>';
+                el.innerHTML = html;
+            }
+            function typeNext() {
+                if (lineIdx >= lines.length) { cursor.style.display = 'inline-block'; return; }
+                var spans = lines[lineIdx];
+                if (spanIdx >= spans.length) {
+                    typedLines.push(spans.map(function(s) { return '<span class="' + s.t + '">' + s.v + '</span>'; }).join(''));
+                    lineIdx++; spanIdx = 0; charIdx = 0;
+                    renderAll();
+                    setTimeout(typeNext, 150);
+                    return;
+                }
+                var s = spans[spanIdx];
+                if (charIdx >= s.v.length) {
+                    spanIdx++; charIdx = 0;
+                    renderAll();
+                    setTimeout(typeNext, 40);
+                    return;
+                }
+                var partial = s.v.substring(0, charIdx + 1);
+                var lineHTML = '';
+                for (var j = 0; j < spans.length; j++) {
+                    var text = (j < spanIdx) ? spans[j].v : (j === spanIdx ? partial : '');
+                    var cls = spans[j].t;
+                    if (text) lineHTML += '<span class="' + cls + '">' + text + '</span>';
+                }
+                var fullHTML = '';
+                for (var k = 0; k < typedLines.length; k++) fullHTML += typedLines[k] + '<br>';
+                fullHTML += lineHTML;
+                el.innerHTML = fullHTML;
+                charIdx++;
+                var ch = s.v[charIdx - 1];
+                var delay = (ch === ' ' || ch === '\u00b7') ? 20 : Math.random() * 35 + 20;
+                setTimeout(typeNext, delay);
+            }
+            cursor.style.display = 'none';
+            typeNext();
+        })();
+    </script>
 </body>
 </html>

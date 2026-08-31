@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>srest Documentation | Slurm REST API TUI</title>
+    <meta name="description" content="srest documentation: installation, configuration, usage, key bindings and the Slurm REST API query builder.">
+    <meta name="keywords" content="srest docs, Slurm TUI documentation, slurmrestd configuration, Bubble Tea, HPC job monitoring">
+    <link rel="canonical" href="https://srest.scszero.com/docs.html">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #0B0E10;
+            --surface: #14181B;
+            --accent: #EFB72B;
+            --accent-soft: #FFD76A;
+            --accent-warn: #FF9900;
+            --accent-fail: #FF5C5C;
+            --text: #E8ECEF;
+            --muted: #7C8791;
+            --border: rgba(255,255,255,0.08);
+            --radius: 12px;
+            --font-mono: 'IBM Plex Mono', 'JetBrains Mono', 'Fira Code', monospace;
+            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--font-sans); background: var(--bg); color: var(--text); line-height: 1.7; }
+        .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+        nav { padding: 20px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        nav .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        nav .logo svg { width: 44px; height: 44px; }
+        nav .logo span { font-weight: 700; font-size: 1.3rem; color: var(--accent); font-family: var(--font-mono); }
+        nav a:not(.logo) { color: var(--muted); text-decoration: none; margin-left: 24px; font-size: 0.9rem; transition: color .2s; font-family: var(--font-mono); font-size: 0.85rem; }
+        nav a:not(.logo):hover { color: var(--text); }
+
+        .docs-header { padding: 60px 0 30px; }
+        .docs-header h1 { font-size: 2.5rem; font-weight: 800; font-family: var(--font-mono); letter-spacing: -0.02em; }
+        .docs-header h1 span { color: var(--accent); }
+        .docs-header p { color: var(--muted); margin-top: 8px; font-size: 1.05rem; }
+
+        .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 40px; }
+        .toc h2 { font-size: 1rem; font-family: var(--font-mono); color: var(--accent); margin-bottom: 10px; }
+        .toc a { display: block; color: var(--muted); text-decoration: none; padding: 3px 0; font-size: 0.9rem; transition: color .2s; }
+        .toc a:hover { color: var(--text); }
+
+        section.doc { padding: 20px 0 40px; }
+        section.doc h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 16px; font-family: var(--font-mono); color: var(--accent); }
+        section.doc h3 { font-size: 1.1rem; font-weight: 600; margin: 24px 0 8px; font-family: var(--font-mono); }
+        section.doc p { color: var(--muted); margin-bottom: 12px; }
+        section.doc code { background: var(--border); padding: 1px 6px; border-radius: 4px; font-size: 0.9rem; font-family: var(--font-mono); }
+        section.doc ul { margin: 8px 0 12px 20px; color: var(--muted); }
+        section.doc li { margin-bottom: 6px; }
+
+        .code-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 24px;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 12px 0 20px;
+            position: relative;
+        }
+        .code-block .cmd { color: var(--accent); }
+        .code-block .comment { color: var(--muted); }
+
+        table { width: 100%; border-collapse: collapse; margin: 12px 0 24px; font-size: 0.9rem; }
+        th { text-align: left; font-family: var(--font-mono); color: var(--accent); border-bottom: 1px solid var(--border); padding: 8px 12px; }
+        td { border-bottom: 1px solid var(--border); padding: 8px 12px; color: var(--muted); }
+        td code { background: var(--border); padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem; }
+
+        .note { background: rgba(239,183,43,0.08); border: 1px solid rgba(239,183,43,0.3); border-radius: var(--radius); padding: 14px 18px; margin: 12px 0 20px; font-size: 0.9rem; color: var(--muted); }
+        .note strong { color: var(--accent); }
+
+        footer { border-top: 1px solid var(--border); padding: 40px 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
+        footer a { color: var(--accent); text-decoration: none; }
+
+        @media (max-width: 640px) {
+            .docs-header h1 { font-size: 2rem; }
+            nav a:not(.logo) { margin-left: 12px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav role="navigation" aria-label="Main navigation">
+            <a href="/" class="logo" aria-label="srest home">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="44" height="44" role="img" aria-label="srest logo: terminal with braces">
+                    <rect width="200" height="200" rx="40" fill="#0B0E10"/>
+                    <rect x="40" y="40" width="120" height="120" rx="12" fill="#14181B" stroke="#EFB72B" stroke-width="4"/>
+                    <path d="M 78 75 H 62 C 52 75 52 85 52 92 V 108 C 52 115 45 120 45 120 C 45 120 52 125 52 132 V 148 C 52 155 52 165 62 165 H 78" fill="none" stroke="#EFB72B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 122 75 H 138 C 148 75 148 85 148 92 V 108 C 148 115 155 120 155 120 C 155 120 148 125 148 132 V 148 C 148 155 148 165 138 165 H 122" fill="none" stroke="#EFB72B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="100" y1="88" x2="100" y2="145" stroke="#EFB72B" stroke-width="5" stroke-linecap="round"/>
+                    <circle cx="100" cy="145" r="7" fill="#EFB72B"/>
+                </svg>
+                <span>srest</span>
+            </a>
+            <div>
+                <a href="https://github.com/SergioZ3R0/srest" aria-label="srest on GitHub">GitHub</a>
+                <a href="/" aria-label="srest home">Home</a>
+            </div>
+        </nav>
+
+        <div class="docs-header">
+            <h1>s<span>rest</span> Documentation</h1>
+            <p>Install, configure and use the Slurm REST API TUI.</p>
+        </div>
+
+        <div class="toc" role="navigation" aria-label="Documentation contents">
+            <h2>Contents</h2>
+            <a href="#requirements">Requirements</a>
+            <a href="#installation">Installation</a>
+            <a href="#configuration">Configuration</a>
+            <a href="#usage">Usage &amp; key bindings</a>
+            <a href="#features">Features</a>
+            <a href="#test-lab">Test Lab</a>
+        </div>
+
+        <main>
+            <section class="doc" id="requirements" aria-labelledby="requirements">
+                <h2>Requirements</h2>
+                <ul>
+                    <li><strong>Go 1.24+</strong> to build from source.</li>
+                    <li>A running <code>slurmrestd</code> endpoint with JWT authentication (for authenticated operations).</li>
+                    <li>Network access to the <code>slurmrestd</code> HTTP API.</li>
+                </ul>
+            </section>
+
+            <section class="doc" id="installation" aria-labelledby="installation">
+                <h2>Installation</h2>
+                <div class="code-block"><span class="cmd">git clone https://github.com/SergioZ3R0/srest.git<br>cd srest<br>go build -o srest .</span></div>
+                <p>Or run directly without building:</p>
+                <div class="code-block"><span class="cmd">go run .</span></div>
+            </section>
+
+            <section class="doc" id="configuration" aria-labelledby="configuration">
+                <h2>Configuration</h2>
+                <p>srest is configured through environment variables:</p>
+                <table>
+                    <tr><th>Variable</th><th>Required</th><th>Description</th></tr>
+                    <tr><td><code>SLURM_URL</code></td><td>No</td><td>Base URL of slurmrestd (default <code>http://localhost:6820</code>).</td></tr>
+                    <tr><td><code>SLURM_JWT</code></td><td>Yes*</td><td>JWT token for the <code>X-SLURM-USER-TOKEN</code> header.</td></tr>
+                    <tr><td><code>SLURM_USER_NAME</code></td><td>No</td><td>User for <code>X-SLURM-USER-NAME</code> (defaults to the current OS user).</td></tr>
+                    <tr><td><code>SLURM_API_VERSION</code></td><td>No</td><td>API version (e.g. <code>v0.0.45</code>). If omitted, it is auto-detected.</td></tr>
+                </table>
+                <p class="note"><strong>Note:</strong> * Required for endpoints that need authentication; can be omitted on a JWT-less slurmrestd.</p>
+                <div class="code-block">
+                    <span class="comment">export SLURM_URL=http://localhost:6820</span><br>
+                    <span class="comment">export SLURM_JWT=$(scontrol token | cut -d= -f2)</span><br>
+                    <span class="comment">export SLURM_USER_NAME=slurm</span><br>
+                    <span class="cmd">./srest</span>
+                </div>
+            </section>
+
+            <section class="doc" id="usage" aria-labelledby="usage">
+                <h2>Usage &amp; key bindings</h2>
+                <p>srest opens a tabbed TUI. Navigate tabs and interact with the data.</p>
+                <table>
+                    <tr><th>Key</th><th>Action</th></tr>
+                    <tr><td><code>q</code> / <code>Ctrl+C</code></td><td>Quit</td></tr>
+                    <tr><td><code>tab</code> / <code>]</code></td><td>Next tab</td></tr>
+                    <tr><td><code>shift+tab</code> / <code>[</code></td><td>Previous tab</td></tr>
+                    <tr><td><code>esc</code></td><td>Go to Dashboard</td></tr>
+                    <tr><td><code>/</code></td><td>Filter the current table</td></tr>
+                    <tr><td><code>r</code></td><td>Refresh (Jobs tab)</td></tr>
+                    <tr><td><code>?</code></td><td>Toggle help</td></tr>
+                </table>
+
+                <h3>Query builder keys</h3>
+                <table>
+                    <tr><th>Key</th><th>Action</th></tr>
+                    <tr><td><code>1-5</code></td><td>Select endpoint (ping / jobs / nodes / partitions / diag)</td></tr>
+                    <tr><td><code>↑/↓</code></td><td>Navigate parameters</td></tr>
+                    <tr><td><code>←/→</code></td><td>Cycle the selected parameter's options</td></tr>
+                    <tr><td><code>enter</code></td><td>Edit the selected parameter's value</td></tr>
+                    <tr><td><code>del</code> / <code>backspace</code> / <code>x</code></td><td>Clear the selected parameter's value</td></tr>
+                    <tr><td><code>f</code></td><td>Cycle focus between builder / response / history</td></tr>
+                    <tr><td><code>r</code></td><td>Run the built request</td></tr>
+                </table>
+            </section>
+
+            <section class="doc" id="features" aria-labelledby="features">
+                <h2>Features</h2>
+                <ul>
+                    <li><strong>Dashboard</strong> — real cluster overview: nodes up/down, jobs by state, partitions and accounts.</li>
+                    <li><strong>Jobs</strong> — your jobs (filtered by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths).</li>
+                    <li><strong>Nodes</strong> — cluster nodes with state, CPUs and memory; select a node for details.</li>
+                    <li><strong>Partitions</strong> — partition list with configured and total nodes.</li>
+                    <li><strong>Query</strong> — a Postman-style composer: pick an endpoint, fill or cycle parameters (options gathered live from the cluster) and inspect the request history.</li>
+                    <li><strong>Version auto-detection</strong> — adapts to the slurmrestd data_parser (v0.0.40–45) and version-gates fields.</li>
+                </ul>
+            </section>
+
+            <section class="doc" id="test-lab" aria-labelledby="test-lab">
+                <h2>Test Lab</h2>
+                <p>To try srest against a real Slurm cluster (slurmctld, slurmdbd and slurmrestd) without setting up infrastructure, see the test lab guide:</p>
+                <ul>
+                    <li><a href="https://github.com/SergioZ3R0/srest/blob/main/docs/test-lab.md" style="color: var(--accent);">docs/test-lab.md</a> — spin up a Slurm test cluster with Docker.</li>
+                </ul>
+            </section>
+        </main>
+
+        <footer role="contentinfo">
+            <p>Apache 2.0 &middot; Built by <a href="https://github.com/SergioZ3R0">SergioZ3R0</a></p>
+        </footer>
+    </div>
+</body>
+</html>

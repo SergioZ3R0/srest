@@ -6,7 +6,8 @@
 <p align="center">
   <b> TUI client for the Slurm REST API</b><br>
   <i> View jobs, nodes, partitions &bull; Build requests from your terminal </i><br>
-  <a href="https://srest.scszero.com/">srest.scszero.com</a>
+  <a href="https://srest.scszero.com/">srest.scszero.com</a> &nbsp;|&nbsp;
+  <a href="https://srest.scszero.com/docs.html">Documentation</a>
 </p>
 
 `srest` is a **TUI** (terminal user interface) client for interacting remotely
