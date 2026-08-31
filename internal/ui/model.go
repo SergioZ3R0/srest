@@ -53,6 +53,7 @@ type Model struct {
 	accountsData   []api.AccountInfo
 	searchInput    textinput.Model
 	searching      bool
+	rawInput       textinput.Model
 	spinner        spinner.Model
 	help           help.Model
 	width          int
@@ -79,6 +80,7 @@ func New(client *api.Client) Model {
 		help:        help.New(),
 		jobDetailVP: viewport.New(0, 0),
 		searchInput: textinput.New(),
+		rawInput:    textinput.New(),
 	}
 }
 
@@ -598,7 +600,7 @@ func (m *Model) layout() {
 	m.composer.rebuild()
 
 	m.queryVP.Width = panel
-	m.queryVP.Height = queryH - composerBudget - 3
+	m.queryVP.Height = queryH - composerBudget - 5
 	if m.queryVP.Height < 1 {
 		m.queryVP.Height = 1
 	}
@@ -619,14 +621,25 @@ const (
 	focusBuilder = iota
 	focusResponse
 	focusHistory
+	focusRaw
 )
+
+// rawRunCmd issues a request with a manually written/typed path and reuses
+// the same result handling as the composer.
+func rawRunCmd(c *api.Client, path string) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		return composerRunMsg{err: c.Get(ctx, path, nil)}
+	}
+}
 
 // handleQueryTabKey routes keys within the Query tab based on the focused
 // panel. 'f' cycles focus; 'r' runs the built request from anywhere.
 func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "f":
-		m.queryFocus = (m.queryFocus + 1) % 3
+		m.queryFocus = (m.queryFocus + 1) % 4
 		return m, nil
 	case "r":
 		return m, m.composer.run(m.client)
@@ -643,6 +656,17 @@ func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case focusHistory:
 		m.queryVP, _ = m.queryVP.Update(msg)
 		return m, nil
+	case focusRaw:
+		if msg.String() == "enter" {
+			path := strings.TrimSpace(m.rawInput.Value())
+			if path == "" {
+				return m, nil
+			}
+			return m, rawRunCmd(m.client, path)
+		}
+		var cmd tea.Cmd
+		m.rawInput, cmd = m.rawInput.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -665,10 +689,15 @@ func (m Model) queryTabView(width int) string {
 	)
 	top := lipgloss.JoinHorizontal(lipgloss.Top, builder, output)
 
+	raw := focusedPanel(m.queryFocus == focusRaw, historyPanelStyle).Width(panel).Render(
+		panelTitleStyle.Render("Custom query") + "\n" +
+			searchStyle.Render("Path: "+m.rawInput.View()) + " enter=run",
+	)
+
 	history := focusedPanel(m.queryFocus == focusHistory, historyPanelStyle).Width(panel).Render(
 		panelTitleStyle.Render("Request history") + "\n" + m.queryVP.View(),
 	)
-	return lipgloss.JoinVertical(lipgloss.Left, top, history)
+	return lipgloss.JoinVertical(lipgloss.Left, top, raw, history)
 }
 
 // focusTab blurs every table and focuses the one matching the active tab.
