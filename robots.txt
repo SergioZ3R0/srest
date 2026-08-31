@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://srest.scszero.com/sitemap.xml
