@@ -1,0 +1,71 @@
+name: Bug Report
+description: File a bug report so we can improve srest.
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report for `srest`!
+        Please fill out all the required fields below so we can replicate the issue.
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: What did you run? (e.g., `go run .`, a specific tab, a query in the Query builder)
+      placeholder: |
+        1. Ran command: ...
+        2. Connected to slurmrestd at: ...
+        3. Tried to: ...
+        4. Error occurred...
+    validations:
+      required: true
+  - type: input
+    id: slurm_version
+    attributes:
+      label: Slurm Version
+      description: Check with `scontrol show config | grep -i version`.
+      placeholder: e.g., 26.05.2
+    validations:
+      required: true
+  - type: input
+    id: api_version
+    attributes:
+      label: API Version
+      description: The data_parser version srest detected (shown in the header after connecting).
+      placeholder: e.g., v0.0.45
+    validations:
+      required: true
+  - type: input
+    id: go_version
+    attributes:
+      label: Go Version
+      description: Check with `go version`.
+      placeholder: e.g., 1.24
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Execution Environment
+      options:
+        - Direct connection to slurmrestd
+        - Docker test lab (slurm-docker-cluster)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs / Output
+      description: Paste the terminal output or the request history from the Query tab.
+      render: shell
+    validations:
+      required: false
