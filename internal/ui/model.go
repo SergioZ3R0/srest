@@ -80,7 +80,13 @@ func New(client *api.Client) Model {
 		help:        help.New(),
 		jobDetailVP: viewport.New(0, 0),
 		searchInput: textinput.New(),
-		rawInput:    textinput.New(),
+rawInput:   func() textinput.Model {
+		ti := textinput.New()
+		ti.Placeholder = "/jobs?state=RUNNING"
+		ti.CharLimit = 0
+		ti.Width = 200
+		return ti
+	}(),
 	}
 }
 
@@ -323,6 +329,21 @@ func accountsCmd(c *api.Client) tea.Cmd {
 	}
 }
 
+// qosMsg carries the QoS fetched from the cluster.
+type qosMsg struct {
+	names []string
+	err   error
+}
+
+func qosCmd(c *api.Client) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		names, err := c.QoS(ctx)
+		return qosMsg{names: names, err: err}
+	}
+}
+
 // startSearch opens the table filter for the active data tab.
 func (m *Model) startSearch() {
 	m.searching = true
@@ -385,6 +406,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			nodesCmd(m.client),
 			partitionsCmd(m.client),
 			accountsCmd(m.client),
+			qosCmd(m.client),
 		)
 
 	case partitionsMsg:
@@ -417,6 +439,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.composer.setAccountOptions(names)
+		}
+		return m, nil
+
+	case qosMsg:
+		if msg.err == nil {
+			m.composer.setQoSOptions(msg.names)
 		}
 		return m, nil
 
@@ -640,6 +668,11 @@ func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "f":
 		m.queryFocus = (m.queryFocus + 1) % 4
+		if m.queryFocus == focusRaw {
+			m.rawInput.Focus()
+		} else {
+			m.rawInput.Blur()
+		}
 		return m, nil
 	case "r":
 		return m, m.composer.run(m.client)
@@ -691,7 +724,7 @@ func (m Model) queryTabView(width int) string {
 
 	raw := focusedPanel(m.queryFocus == focusRaw, historyPanelStyle).Width(panel).Render(
 		panelTitleStyle.Render("Custom query") + "\n" +
-			searchStyle.Render("Path: "+m.rawInput.View()) + " enter=run",
+			searchStyle.Render("Path: "+m.rawInput.View()),
 	)
 
 	history := focusedPanel(m.queryFocus == focusHistory, historyPanelStyle).Width(panel).Render(

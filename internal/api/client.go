@@ -191,6 +191,29 @@ func (c *Client) Accounts(ctx context.Context) ([]AccountInfo, error) {
 	return resp.Accounts, nil
 }
 
+// QoS returns the QoS definitions from slurmdb.
+func (c *Client) QoS(ctx context.Context) ([]string, error) {
+	v, ok := c.Version()
+	if !ok {
+		return nil, fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+	var resp struct {
+		QoS []struct {
+			Name string `json:"name"`
+		} `json:"qos"`
+	}
+	if err := c.get(ctx, v, "/slurmdb/"+v.String()+"/qos", &resp); err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(resp.QoS))
+	for _, q := range resp.QoS {
+		if q.Name != "" {
+			names = append(names, q.Name)
+		}
+	}
+	return names, nil
+}
+
 // Partitions returns the names of all partitions visible to the user. Used by
 // the query builder to offer partition values as selectable options.
 func (c *Client) Partitions(ctx context.Context) ([]string, error) {

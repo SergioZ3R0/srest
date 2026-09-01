@@ -263,6 +263,19 @@ func (c *composer) setAccountOptions(names []string) {
 	c.rebuild()
 }
 
+// setQoSOptions feeds the QoS gathered from the cluster into the
+// "qos" parameter of the jobs endpoint.
+func (c *composer) setQoSOptions(names []string) {
+	for i := range endpoints {
+		for j := range endpoints[i].params {
+			if endpoints[i].params[j].name == "qos" {
+				endpoints[i].params[j].options = names
+			}
+		}
+	}
+	c.rebuild()
+}
+
 // run issues the built request and returns a composerRunMsg.
 func (c composer) run(client *api.Client) tea.Cmd {
 	return func() tea.Msg {
