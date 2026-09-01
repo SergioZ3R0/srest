@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -62,33 +63,6 @@ var endpoints = []endpoint{
 			{name: "node"},
 			{name: "users"},
 		},
-	},
-	{
-		name:   "nodes",
-		method: "GET",
-		base:   "slurm",
-		path:   "/nodes",
-		params: []param{
-			{name: "update_time"},
-			{name: "flags"},
-		},
-	},
-	{
-		name:   "partitions",
-		method: "GET",
-		base:   "slurm",
-		path:   "/partitions",
-		params: []param{
-			{name: "update_time"},
-			{name: "flags"},
-		},
-	},
-	{
-		name:   "diag",
-		method: "GET",
-		base:   "slurm",
-		path:   "/diag",
-		params: []param{},
 	},
 }
 
@@ -281,6 +255,27 @@ func (c composer) run(client *api.Client) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
+		ep := endpoints[c.active]
+
+		// "node action" is a special endpoint that sends a POST
+		// /node/{name} with the chosen state in the body.
+		if ep.name == "node action" && ep.method == "POST" {
+			nodeName := ""
+			action := ""
+			for _, p := range ep.params {
+				if p.name == "node" {
+					nodeName = p.value
+				}
+				if p.name == "action" {
+					action = p.value
+				}
+			}
+			if nodeName == "" || action == "" {
+				return composerRunMsg{err: fmt.Errorf("node name and action are required")}
+			}
+			return composerRunMsg{err: client.NodeState(ctx, nodeName, action, "srest")}
+		}
+
 		return composerRunMsg{err: client.Get(ctx, c.builtPath(), nil)}
 	}
 }
@@ -326,7 +321,7 @@ func (c composer) renderBuilder() string {
 		}
 	}
 
-	sb.WriteString(composerHint.Render("enter=edit ←/→=option ↑/↓=nav del=clear f=focus 1-5=endpoint r=run") + "\n")
+	sb.WriteString(composerHint.Render("enter=edit ←/→=option ↑/↓=nav del=clear f=focus 1-2=endpoint r=run") + "\n")
 	return sb.String()
 }
 
@@ -382,12 +377,6 @@ func (c composer) Update(msg tea.KeyMsg) (composer, tea.Cmd) {
 		c.selectEndpoint(0)
 	case "2":
 		c.selectEndpoint(1)
-	case "3":
-		c.selectEndpoint(2)
-	case "4":
-		c.selectEndpoint(3)
-	case "5":
-		c.selectEndpoint(4)
 	}
 	return c, nil
 }

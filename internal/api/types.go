@@ -172,6 +172,9 @@ type PartitionInfo struct {
 		Configured string `json:"configured"`
 		Total      int    `json:"total"`
 	} `json:"nodes"`
+	Maximums struct {
+		Time NoVal `json:"time"`
+	} `json:"maximums"`
 }
 
 // AccountInfo is a Slurm account from GET /slurmdb/vX/accounts.

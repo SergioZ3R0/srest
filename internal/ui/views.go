@@ -236,10 +236,15 @@ func partitionDetailView(p api.PartitionInfo) string {
 		}
 		return composerParamName.Render(name) + "  " + composerParamValue.Render(val)
 	}
+	maxWall := "∞"
+	if !p.Maximums.Time.Infinite && p.Maximums.Time.Number > 0 {
+		maxWall = formatDuration(p.Maximums.Time.Number * 60)
+	}
 	return lipgloss.JoinVertical(lipgloss.Left,
 		f("Name", p.Name),
 		f("Nodes", p.Nodes.Configured),
 		f("Total", fmt.Sprintf("%d", p.Nodes.Total)),
+		f("Max wall", maxWall),
 	)
 }
 

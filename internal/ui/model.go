@@ -51,10 +51,10 @@ type Model struct {
 	nodesData      []api.NodeInfo
 	partitionsData []api.PartitionInfo
 	accountsData   []api.AccountInfo
-	searchInput    textinput.Model
-	searching      bool
-	rawInput       textinput.Model
-	spinner        spinner.Model
+searchInput   textinput.Model
+	searching     bool
+	rawInput      textinput.Model
+	spinner    spinner.Model
 	help           help.Model
 	width          int
 	height         int
@@ -80,7 +80,7 @@ func New(client *api.Client) Model {
 		help:        help.New(),
 		jobDetailVP: viewport.New(0, 0),
 		searchInput: textinput.New(),
-rawInput:   func() textinput.Model {
+	rawInput:   func() textinput.Model {
 		ti := textinput.New()
 		ti.Placeholder = "/jobs?state=RUNNING"
 		ti.CharLimit = 0
@@ -561,6 +561,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.startSearch()
 				return m, nil
 			}
+			if msg.String() == "j" {
+				// Switch to Jobs tab pre-filtered by the selected partition.
+				idx := m.partitions.Cursor()
+				if idx >= 0 && idx < len(m.partitionsData) {
+					pname := m.partitionsData[idx].Name
+					m.active = 1
+					m.focusTab()
+					m.searching = true
+					m.searchInput.SetValue(pname)
+					m.applyFilter(pname)
+					return m, nil
+				}
+			}
 			m.partitions, _ = m.partitions.Update(msg)
 		}
 
@@ -902,7 +915,7 @@ func (m Model) partitionsView(width int) string {
 	detailW := panel - tableW
 
 	tablePanel := composerPanelStyle.Width(tableW).Render(
-		panelTitleStyle.Render("Partitions (/ search)") + "\n" + m.searchBar() + m.partitions.View(),
+		panelTitleStyle.Render("Partitions (/ search · j: jobs)") + "\n" + m.searchBar() + m.partitions.View(),
 	)
 	idx := m.partitions.Cursor()
 	detail := detailStyle.Render("Select a partition to see its details.")

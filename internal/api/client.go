@@ -214,6 +214,44 @@ func (c *Client) QoS(ctx context.Context) ([]string, error) {
 	return names, nil
 }
 
+// NodeState changes the state of a node (drain, resume, power_down, power_up).
+func (c *Client) NodeState(ctx context.Context, name, state, reason string) error {
+	v, ok := c.Version()
+	if !ok {
+		return fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+
+	body := map[string]string{"state": state}
+	if reason != "" {
+		body["reason"] = reason
+	}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshaling request: %w", err)
+	}
+
+	endpoint := fmt.Sprintf("%s/slurm/%s/node/%s", c.baseURL, v, name)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(string(data)))
+	if err != nil {
+		return fmt.Errorf("building request: %w", err)
+	}
+	req.Header.Set("X-SLURM-USER-TOKEN", c.jwt)
+	req.Header.Set("X-SLURM-USER-NAME", c.username)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("contacting %s: %w", endpoint, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return &StatusError{Code: resp.StatusCode, Body: string(body)}
+	}
+	return nil
+}
+
 // Partitions returns the names of all partitions visible to the user. Used by
 // the query builder to offer partition values as selectable options.
 func (c *Client) Partitions(ctx context.Context) ([]string, error) {
