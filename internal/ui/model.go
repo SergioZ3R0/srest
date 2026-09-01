@@ -20,6 +20,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/SergioZ3R0/srest/internal/api"
+	"github.com/SergioZ3R0/srest/internal/history"
 )
 
 // Model represents the complete UI state.
@@ -40,7 +41,6 @@ type Model struct {
 	jobs           table.Model
 	nodes          table.Model
 	partitions     table.Model
-	queries        []api.Query
 	queryVP        viewport.Model
 	composer       composer
 	queryFocus     int
@@ -51,9 +51,11 @@ type Model struct {
 	nodesData      []api.NodeInfo
 	partitionsData []api.PartitionInfo
 	accountsData   []api.AccountInfo
-searchInput   textinput.Model
+	searchInput   textinput.Model
 	searching     bool
 	rawInput      textinput.Model
+	hist          *history.Store
+	lastSavedCount int
 	spinner    spinner.Model
 	help           help.Model
 	width          int
@@ -66,39 +68,108 @@ func New(client *api.Client) Model {
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
+	hist, _ := history.New()
+
+	ti := textinput.New()
+	ti.Placeholder = "/jobs?state=RUNNING"
+	ti.CharLimit = 0
+	ti.Width = 200
+
+	// Load persisted history into the query inspector viewport.
+	var initHistory string
+	if hist != nil {
+		if entries, err := hist.Load(); err == nil && len(entries) > 0 {
+			initHistory = historyView(entries)
+		}
+	}
+
 	return Model{
-		client:      client,
-		status:      "Connecting to Slurm...",
-		tabs:        []string{"Dashboard", "Jobs", "Nodes", "Partitions", "Query"},
-		active:      0,
-		jobs:        newJobsTable(),
-		nodes:       newNodesTable(),
-		partitions:  newPartitionsTable(),
-		queryVP:     viewport.New(0, 0),
-		composer:    newComposer(),
-		spinner:     s,
-		help:        help.New(),
+		client:     client,
+		status:     "Connecting to Slurm...",
+		tabs:       []string{"Dashboard", "Jobs", "Nodes", "Partitions", "Query"},
+		active:     0,
+		jobs:       newJobsTable(),
+		nodes:      newNodesTable(),
+		partitions: newPartitionsTable(),
+		queryVP:    func() viewport.Model {
+			vp := viewport.New(0, 0)
+			if initHistory != "" {
+				vp.SetContent(initHistory)
+			}
+			return vp
+		}(),
+		composer:   newComposer(),
+		hist:       hist,
+		spinner:    s,
+		help:       help.New(),
 		jobDetailVP: viewport.New(0, 0),
 		searchInput: textinput.New(),
-	rawInput:   func() textinput.Model {
-		ti := textinput.New()
-		ti.Placeholder = "/jobs?state=RUNNING"
-		ti.CharLimit = 0
-		ti.Width = 200
-		return ti
-	}(),
+		rawInput:   ti,
 	}
 }
 
-// refreshQueries pulls the latest recorded queries from the client into the
-// query inspector viewport.
+// historyView formats persisted history entries for display in the viewport.
+func historyView(entries []history.Entry) string {
+	var sb strings.Builder
+	for i, e := range entries {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		status := "—"
+		if e.StatusCode > 0 {
+			status = fmt.Sprintf("%d", e.StatusCode)
+		}
+		method := queryMethodStyle.Render(e.Method)
+		code := statusColor(e.StatusCode).Render(status)
+		dur := queryDetailStyle.Render(e.Duration.Round(time.Millisecond).String())
+		ts := queryDetailStyle.Render(e.Timestamp.Format("15:04:05"))
+
+		sb.WriteString(fmt.Sprintf("%s  %s  %-8s  %s  %s", ts, method, code, dur, e.URL))
+		if e.Error != "" {
+			sb.WriteString("\n  " + errorStyle.Render("error: "+e.Error))
+		}
+		for _, w := range e.Warnings {
+			sb.WriteString("\n  " + warningStyle.Render("warning: "+w))
+		}
+	}
+	return sb.String()
+}
+
+// refreshQueries pulls the latest recorded queries from the client, persists
+// any new ones to disk, and reloads the viewport from the history store.
 func (m *Model) refreshQueries() {
-	if m.client == nil {
+	if m.client == nil || m.hist == nil {
 		return
 	}
-	m.queries = m.client.Queries()
-	m.queryVP.SetContent(queryLog(m.queries))
-	m.queryVP.GotoBottom()
+
+	clientQueries := m.client.Queries()
+
+	// Only save queries that haven't been persisted yet.
+	if len(clientQueries) > m.lastSavedCount {
+		for _, q := range clientQueries[m.lastSavedCount:] {
+			entry := history.Entry{
+				Method:     q.Method,
+				URL:        q.URL,
+				StatusCode: q.StatusCode,
+				Duration:   q.Duration,
+				Timestamp:  time.Now(),
+			}
+			if q.Error != nil {
+				entry.Error = q.Error.Error()
+			}
+			for _, w := range q.Warnings {
+				entry.Warnings = append(entry.Warnings, w.Description)
+			}
+			_, _ = m.hist.Append(entry)
+		}
+		m.lastSavedCount = len(clientQueries)
+	}
+
+	// Reload everything from disk and update the viewport.
+	if entries, err := m.hist.Load(); err == nil {
+		m.queryVP.SetContent(historyView(entries))
+		m.queryVP.GotoBottom()
+	}
 }
 
 // statusMsg is the message the connection command returns to the model.
@@ -469,8 +540,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case composerRunMsg:
 		m.refreshQueries()
-		if len(m.queries) > 0 {
-			last := m.queries[len(m.queries)-1]
+		clientQueries := m.client.Queries()
+		if len(clientQueries) > 0 {
+			last := clientQueries[len(clientQueries)-1]
 			status := "—"
 			if last.StatusCode > 0 {
 				status = fmt.Sprintf("%d", last.StatusCode)

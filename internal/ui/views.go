@@ -1,9 +1,7 @@
 package ui
 
 import (
-	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -327,43 +325,5 @@ func statusColor(code int) lipgloss.Style {
 }
 
 // queryLog renders the recorded HTTP queries as a scrollable log.
-func queryLog(queries []api.Query) string {
-	if len(queries) == 0 {
-		return detailStyle.Render("No queries yet. Connect to a cluster to see traffic.")
-	}
-
-	var sb strings.Builder
-	for i, q := range queries {
-		if i > 0 {
-			sb.WriteString("\n")
-		}
-		status := "—"
-		if q.StatusCode > 0 {
-			status = fmt.Sprintf("%d", q.StatusCode)
-		}
-		method := queryMethodStyle.Render(q.Method)
-		code := statusColor(q.StatusCode).Render(status)
-		dur := queryDetailStyle.Render(q.Duration.Round(time.Millisecond).String())
-
-		sb.WriteString(fmt.Sprintf("%s  %s  %-8s  %s",
-			method, code, dur, q.URL))
-
-		if q.Error != nil {
-			var se *api.StatusError
-			msg := q.Error.Error()
-			if errors.As(q.Error, &se) {
-				msg = http.StatusText(se.Code)
-			} else if len(msg) > 80 {
-				msg = msg[:80] + "…"
-			}
-			sb.WriteString("\n  " + errorStyle.Render("error: "+msg))
-		}
-		for _, w := range q.Warnings {
-			sb.WriteString("\n  " + warningStyle.Render("warning: "+w.Description))
-		}
-		for _, e := range q.Errors {
-			sb.WriteString("\n  " + warningStyle.Render("api error: "+e.Description))
-		}
-	}
-	return sb.String()
-}
+// queryLog formats live client queries for display in the viewport.
+// Kept as a fallback; the persistent historyView is used in production.
