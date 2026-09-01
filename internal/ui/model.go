@@ -51,12 +51,12 @@ type Model struct {
 	nodesData      []api.NodeInfo
 	partitionsData []api.PartitionInfo
 	accountsData   []api.AccountInfo
-	searchInput   textinput.Model
-	searching     bool
-	rawInput      textinput.Model
-	hist          *history.Store
+	searchInput    textinput.Model
+	searching      bool
+	rawInput       textinput.Model
+	hist           *history.Store
 	lastSavedCount int
-	spinner    spinner.Model
+	spinner        spinner.Model
 	help           help.Model
 	width          int
 	height         int
@@ -91,20 +91,20 @@ func New(client *api.Client) Model {
 		jobs:       newJobsTable(),
 		nodes:      newNodesTable(),
 		partitions: newPartitionsTable(),
-		queryVP:    func() viewport.Model {
+		queryVP: func() viewport.Model {
 			vp := viewport.New(0, 0)
 			if initHistory != "" {
 				vp.SetContent(initHistory)
 			}
 			return vp
 		}(),
-		composer:   newComposer(),
-		hist:       hist,
-		spinner:    s,
-		help:       help.New(),
+		composer:    newComposer(),
+		hist:        hist,
+		spinner:     s,
+		help:        help.New(),
 		jobDetailVP: viewport.New(0, 0),
 		searchInput: textinput.New(),
-		rawInput:   ti,
+		rawInput:    ti,
 	}
 }
 
