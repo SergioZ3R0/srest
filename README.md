@@ -48,6 +48,7 @@ It is written in **Go**, styled with
 - [x] Table search/filter (`/`).
 - [x] Query builder with user-focused endpoints (ping, jobs) and cluster-gathered options (state, account, partition, qos).
 - [x] Custom query panel for writing/pasting any request path.
+- [x] Persistent request history (saved to `~/.local/share/srest/history.json`, max 100 entries).
 - [ ] Job submission and job actions (cancel/requeue).
 
 ## Features
