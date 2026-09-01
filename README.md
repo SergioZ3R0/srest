@@ -26,7 +26,9 @@ REST API into a live, interactive dashboard. It lets you:
 - Inspect job details — account, partition, time limits, run time, assigned
   nodes and log paths — without SSH.
 - **Compose API requests** visually (endpoint-aware parameters with options
-  gathered live from the cluster) and inspect the request history.
+  gathered live from the cluster: state, account, partition, qos) and
+  inspect the request history.
+- **Custom query** panel to write or paste any request path directly.
 - Detect and adapt to the `slurmrestd` **API version** automatically
   (v0.0.40 – v0.0.45).
 
@@ -44,7 +46,8 @@ It is written in **Go**, styled with
 - [x] Dashboard with real cluster stats (nodes up/down, jobs by state, partitions, accounts).
 - [x] Real-time views: Jobs, Nodes, Partitions (with per-item detail panels).
 - [x] Table search/filter (`/`).
-- [x] Query builder/inspector: a Postman-style composer with endpoint-aware parameters, options gathered from the cluster (partitions, accounts) and a request history.
+- [x] Query builder with user-focused endpoints (ping, jobs) and cluster-gathered options (state, account, partition, qos).
+- [x] Custom query panel for writing/pasting any request path.
 - [ ] Job submission and job actions (cancel/requeue).
 
 ## Features
@@ -52,10 +55,14 @@ It is written in **Go**, styled with
 **Tabs** (navigate with `tab`/`shift+tab` or `[`/`]`, `esc` returns to Dashboard):
 
 - **Dashboard** — real cluster overview: nodes up/down, jobs running/pending/completed/failed, partitions and accounts.
-- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths).
+- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Press `j` in Partitions to view jobs by partition.
 - **Nodes** — cluster nodes with state, CPUs, memory and partitions; select a node to see its detail.
-- **Partitions** — partition list with configured/total nodes.
-- **Query** — a request composer: pick an endpoint (`1-5`), fill or cycle parameters (`enter` to edit, `←`/`→` to cycle options, `del` to clear), and run (`r`). The response and request history are shown alongside. Partition and account options are gathered live from the cluster.
+- **Partitions** — partition list with configured/total nodes and max wall time. Press `j` to filter jobs by partition.
+- **Query** — a request composer with two user-focused endpoints:
+  - **ping** — connectivity check.
+  - **jobs** — query with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.
+  - **Custom query** panel: type or paste any request path to run it directly.
+  - **Request history** — every request logged with status, duration and warnings.
 
 **Key bindings**
 

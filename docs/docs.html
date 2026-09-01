@@ -131,8 +131,13 @@
             <section class="doc" id="installation" aria-labelledby="installation">
                 <h2>Installation</h2>
                 <div class="code-block"><span class="cmd">git clone https://github.com/SergioZ3R0/srest.git<br>cd srest<br>go build -o srest .</span></div>
-                <p>Or run directly without building:</p>
-                <div class="code-block"><span class="cmd">go run .</span></div>
+                <p>Or use the Makefile:</p>
+                <div class="code-block">
+                    <span class="cmd">make build</span><br>
+                    <span class="comment"># install to ~/.local/bin (or override with PREFIX)</span><br>
+                    <span class="cmd">make install</span>
+                </div>
+                <p class="note"><strong>Note:</strong> Run <code>make help</code> to see all available targets.</p>
             </section>
 
             <section class="doc" id="configuration" aria-labelledby="configuration">
@@ -168,27 +173,51 @@
                     <tr><td><code>?</code></td><td>Toggle help</td></tr>
                 </table>
 
-                <h3>Query builder keys</h3>
+                <h3>Dashboard</h3>
+                <p>Real-time overview: nodes up/down, jobs running/pending/completed/failed, partitions and accounts.</p>
+
+                <h3>Jobs tab</h3>
+                <p>Your jobs (filtered by the authenticated user). Select a job to see its detail: account, partition, time limit, run time, assigned nodes, log paths and exit code (when finished). Press <code>/</code> to filter by any column. Press <code>r</code> to refresh.</p>
+
+                <h3>Nodes tab</h3>
+                <p>Cluster nodes with state, CPUs, memory and partitions. Select a node to see its detail. Press <code>/</code> to filter.</p>
+
+                <h3>Partitions tab</h3>
+                <p>Partition list with configured/total nodes and max wall time. Select a partition to see its detail. Press <code>/</code> to filter. Press <code>j</code> to view jobs in that partition.</p>
+
+                <h3>Query tab</h3>
+                <p>A Postman-style request composer with two user-focused endpoints:</p>
+                <ul>
+                    <li><strong>ping</strong> — connectivity check against slurmrestd.</li>
+                    <li><strong>jobs</strong> — query jobs with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.</li>
+                </ul>
+
+                <h4>Query builder keys</h4>
                 <table>
                     <tr><th>Key</th><th>Action</th></tr>
-                    <tr><td><code>1-5</code></td><td>Select endpoint (ping / jobs / nodes / partitions / diag)</td></tr>
+                    <tr><td><code>1-2</code></td><td>Select endpoint (ping / jobs)</td></tr>
                     <tr><td><code>↑/↓</code></td><td>Navigate parameters</td></tr>
-                    <tr><td><code>←/→</code></td><td>Cycle the selected parameter's options</td></tr>
+                    <tr><td><code>←/→</code></td><td>Cycle the selected parameter's options (state, partition, qos, account)</td></tr>
                     <tr><td><code>enter</code></td><td>Edit the selected parameter's value</td></tr>
                     <tr><td><code>del</code> / <code>backspace</code> / <code>x</code></td><td>Clear the selected parameter's value</td></tr>
-                    <tr><td><code>f</code></td><td>Cycle focus between builder / response / history</td></tr>
+                    <tr><td><code>f</code></td><td>Cycle focus between builder / response / custom query / history</td></tr>
                     <tr><td><code>r</code></td><td>Run the built request</td></tr>
                 </table>
+
+                <h4>Custom query</h4>
+                <p>Switch to the Custom query panel with <code>f</code>, then type or paste a full request path (e.g. <code>/jobs?state=RUNNING</code> or <code>/slurmdb/v0.0.45/jobs?users=alice</code>) and press <code>enter</code> to run it.</p>
             </section>
 
             <section class="doc" id="features" aria-labelledby="features">
                 <h2>Features</h2>
                 <ul>
                     <li><strong>Dashboard</strong> — real cluster overview: nodes up/down, jobs by state, partitions and accounts.</li>
-                    <li><strong>Jobs</strong> — your jobs (filtered by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths).</li>
+                    <li><strong>Jobs</strong> — your jobs (filtered by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code).</li>
                     <li><strong>Nodes</strong> — cluster nodes with state, CPUs and memory; select a node for details.</li>
-                    <li><strong>Partitions</strong> — partition list with configured and total nodes.</li>
-                    <li><strong>Query</strong> — a Postman-style composer: pick an endpoint, fill or cycle parameters (options gathered live from the cluster) and inspect the request history.</li>
+                    <li><strong>Partitions</strong> — partition list with configured/total nodes, max wall time; press <code>j</code> to filter jobs.</li>
+                    <li><strong>Query builder</strong> — build requests against ping and jobs with parameters gathered live from the cluster (state, account, partition, qos).</li>
+                    <li><strong>Custom query</strong> — type or paste any request path to run it directly.</li>
+                    <li><strong>Request history</strong> — every request and response is logged with status, duration, and warnings.</li>
                     <li><strong>Version auto-detection</strong> — adapts to the slurmrestd data_parser (v0.0.40–45) and version-gates fields.</li>
                 </ul>
             </section>
