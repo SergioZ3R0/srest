@@ -46,7 +46,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           go build -o srest .
-          zip "srest-${{ matrix.goos }}-${{ matrix.goarch }}.zip" srest
+          zip "srest-${{ matrix.goos }}-${{ matrix.goarch }}.zip" srest LICENSE
           echo "ARTIFACT=srest-${{ matrix.goos }}-${{ matrix.goarch }}.zip" >> $GITHUB_ENV
 
       - name: Upload artifact
