@@ -110,11 +110,12 @@ Follows the standard Go layout with a strict separation of responsibilities:
 
 ### Pre-built binaries
 
-Download the latest binary from [GitHub Releases](https://github.com/SergioZ3R0/srest/releases) for your platform (Linux, macOS) and run directly:
+Download the zip for your platform from [GitHub Releases](https://github.com/SergioZ3R0/srest/releases) and extract it — no Go installation required:
 
 ```bash
-chmod +x srest-linux-amd64
-./srest-linux-amd64
+unzip srest-linux-amd64.zip
+chmod +x srest
+./srest
 ```
 
 ### From source

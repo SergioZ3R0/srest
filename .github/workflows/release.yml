@@ -45,15 +45,15 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          binary="srest-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}"
-          go build -o "${binary}" .
-          echo "BINARY=${binary}" >> $GITHUB_ENV
+          go build -o srest .
+          zip "srest-${{ matrix.goos }}-${{ matrix.goarch }}.zip" srest
+          echo "ARTIFACT=srest-${{ matrix.goos }}-${{ matrix.goarch }}.zip" >> $GITHUB_ENV
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.BINARY }}
-          path: ${{ env.BINARY }}
+          name: ${{ env.ARTIFACT }}
+          path: ${{ env.ARTIFACT }}
 
   publish:
     name: Create release
