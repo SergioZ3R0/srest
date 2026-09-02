@@ -108,6 +108,17 @@ Follows the standard Go layout with a strict separation of responsibilities:
 
 ## Installation and usage
 
+### Pre-built binaries
+
+Download the latest binary from [GitHub Releases](https://github.com/SergioZ3R0/srest/releases) for your platform (Linux, macOS) and run directly:
+
+```bash
+chmod +x srest-linux-amd64
+./srest-linux-amd64
+```
+
+### From source
+
 ```bash
 go build -o srest .
 ```
