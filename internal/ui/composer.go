@@ -69,28 +69,28 @@ var endpoints = []endpoint{
 			{name: "users"},
 		},
 	},
-		{
-			name:   "submit jobs",
-			method: "POST",
-			base:   "slurm",
-			path:   "/job/submit",
-			params: []param{
-				{name: "name"},
-				{name: "partition"},
-				{name: "qos"},
-				{name: "account"},
-				{name: "gres"},
-				{name: "time_limit", value: "60"},
-				{name: "nodes", value: "1"},
-				{name: "cpus_per_task", value: "1"},
-				{name: "memory_per_node"},
-				{name: "standard_output"},
-				{name: "standard_error"},
-				{name: "current_working_directory", value: "/tmp"},
-				{name: "script_path"},
-				{name: "script", value: "#!/bin/bash\nhostname"},
-			},
+	{
+		name:   "submit jobs",
+		method: "POST",
+		base:   "slurm",
+		path:   "/job/submit",
+		params: []param{
+			{name: "name"},
+			{name: "partition"},
+			{name: "qos"},
+			{name: "account"},
+			{name: "gres"},
+			{name: "time_limit", value: "60"},
+			{name: "nodes", value: "1"},
+			{name: "cpus_per_task", value: "1"},
+			{name: "memory_per_node"},
+			{name: "standard_output"},
+			{name: "standard_error"},
+			{name: "current_working_directory", value: "/tmp"},
+			{name: "script_path"},
+			{name: "script", value: "#!/bin/bash\nhostname"},
 		},
+	},
 }
 
 // composer is the visual query builder state. The builder (endpoints, URL,
@@ -325,10 +325,10 @@ func (c composer) run(client *api.Client) tea.Cmd {
 					}
 				}
 
-			// Environment is required for job submission; default to PATH.
-			if _, ok := jobFields["environment"]; !ok {
-				jobFields["environment"] = []string{"PATH=/usr/bin:/bin"}
-			}
+				// Environment is required for job submission; default to PATH.
+				if _, ok := jobFields["environment"]; !ok {
+					jobFields["environment"] = []string{"PATH=/usr/bin:/bin"}
+				}
 
 				body := map[string]any{"job": jobFields}
 
@@ -362,13 +362,13 @@ func (c composer) run(client *api.Client) tea.Cmd {
 // fieldLabel returns a short display label for the field.
 func fieldLabel(name string) string {
 	labels := map[string]string{
-		"cpus_per_task":                "cpus/task",
-		"memory_per_node":              "mem",
-		"standard_output":              "stdout",
-		"standard_error":               "stderr",
-		"time_limit":                   "wall",
-		"nodes":                        "nodes",
-		"current_working_directory":    "cwd",
+		"cpus_per_task":             "cpus/task",
+		"memory_per_node":           "mem",
+		"standard_output":           "stdout",
+		"standard_error":            "stderr",
+		"time_limit":                "wall",
+		"nodes":                     "nodes",
+		"current_working_directory": "cwd",
 	}
 	if l, ok := labels[name]; ok {
 		return l

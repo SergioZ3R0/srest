@@ -98,9 +98,9 @@ func New(client *api.Client) Model {
 			}
 			return vp
 		}(),
-	composer:   newComposer(),
-		hist:       hist,
-		spinner:    s,
+		composer:    newComposer(),
+		hist:        hist,
+		spinner:     s,
 		help:        help.New(),
 		jobDetailVP: viewport.New(0, 0),
 		searchInput: textinput.New(),
