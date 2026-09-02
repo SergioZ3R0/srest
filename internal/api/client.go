@@ -214,7 +214,62 @@ func (c *Client) QoS(ctx context.Context) ([]string, error) {
 	return names, nil
 }
 
-// NodeState changes the state of a node (drain, resume, power_down, power_up).
+// SubmitResult is the response from POST /job/submit.
+type SubmitResult struct {
+	JobID uint32 `json:"job_id"`
+	Error string `json:"error,omitempty"`
+}
+
+// SubmitJob sends a job submission request and returns the job ID.
+func (c *Client) SubmitJob(ctx context.Context, body map[string]any) (SubmitResult, error) {
+	v, ok := c.Version()
+	if !ok {
+		return SubmitResult{}, fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+
+	data, err := json.Marshal(body)
+	if err != nil {
+		return SubmitResult{}, fmt.Errorf("marshaling request: %w", err)
+	}
+
+	endpoint := fmt.Sprintf("%s/slurm/%s/job/submit", c.baseURL, v)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(string(data)))
+	if err != nil {
+		return SubmitResult{}, fmt.Errorf("building request: %w", err)
+	}
+	req.Header.Set("X-SLURM-USER-TOKEN", c.jwt)
+	req.Header.Set("X-SLURM-USER-NAME", c.username)
+	req.Header.Set("Content-Type", "application/json")
+
+	start := time.Now()
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		c.recordQuery(Query{Method: http.MethodPost, URL: endpoint, Duration: time.Since(start), Error: err})
+		return SubmitResult{}, fmt.Errorf("contacting %s: %w", endpoint, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.recordQuery(Query{Method: http.MethodPost, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Error: err})
+		return SubmitResult{}, fmt.Errorf("reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		se := &StatusError{Code: resp.StatusCode, Body: string(bodyBytes)}
+		c.recordQuery(Query{Method: http.MethodPost, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Error: se, Body: bodyBytes})
+		return SubmitResult{}, se
+	}
+
+	var result SubmitResult
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		c.recordQuery(Query{Method: http.MethodPost, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Error: err})
+		return SubmitResult{}, fmt.Errorf("decoding response: %w", err)
+	}
+
+	c.recordQuery(Query{Method: http.MethodPost, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Body: bodyBytes})
+	return result, nil
+}
 func (c *Client) NodeState(ctx context.Context, name, state, reason string) error {
 	v, ok := c.Version()
 	if !ok {

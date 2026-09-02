@@ -46,10 +46,11 @@ It is written in **Go**, styled with
 - [x] Dashboard with real cluster stats (nodes up/down, jobs by state, partitions, accounts).
 - [x] Real-time views: Jobs, Nodes, Partitions (with per-item detail panels).
 - [x] Table search/filter (`/`).
-- [x] Query builder with user-focused endpoints (ping, jobs) and cluster-gathered options (state, account, partition, qos).
+- [x] Query builder with user-focused endpoints (ping, get jobs, submit jobs) and cluster-gathered options (state, account, partition, qos, gres).
 - [x] Custom query panel for writing/pasting any request path.
+- [x] Job submission with script path, $EDITOR support, and gathered partition/account/qos/gres options.
 - [x] Persistent request history (saved to `~/.local/share/srest/history.json`, max 100 entries).
-- [ ] Job submission and job actions (cancel/requeue).
+- [ ] Job cancellation and requeue.
 
 ## Features
 
@@ -59,11 +60,12 @@ It is written in **Go**, styled with
 - **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Press `j` in Partitions to view jobs by partition.
 - **Nodes** — cluster nodes with state, CPUs, memory and partitions; select a node to see its detail.
 - **Partitions** — partition list with configured/total nodes and max wall time. Press `j` to filter jobs by partition.
-- **Query** — a request composer with two user-focused endpoints:
+- **Query** — a request composer with three user-focused endpoints:
   - **ping** — connectivity check.
-  - **jobs** — query with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.
+  - **get jobs** — query with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.
+  - **submit jobs** — submit a job with name, partition, qos, account, gres, wall time, nodes, cpus/task, memory, script. Partition, account, qos, and gres options are gathered from the cluster. Press `e` to open `$EDITOR`.
   - **Custom query** panel: type or paste any request path to run it directly.
-  - **Request history** — every request logged with status, duration and warnings.
+  - **Request history** — every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
 
 **Key bindings**
 

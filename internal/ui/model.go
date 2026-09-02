@@ -98,9 +98,9 @@ func New(client *api.Client) Model {
 			}
 			return vp
 		}(),
-		composer:    newComposer(),
-		hist:        hist,
-		spinner:     s,
+	composer:   newComposer(),
+		hist:       hist,
+		spinner:    s,
 		help:        help.New(),
 		jobDetailVP: viewport.New(0, 0),
 		searchInput: textinput.New(),
@@ -126,7 +126,14 @@ func historyView(entries []history.Entry) string {
 
 		sb.WriteString(fmt.Sprintf("%s  %s  %-8s  %s  %s", ts, method, code, dur, e.URL))
 		if e.Error != "" {
-			sb.WriteString("\n  " + errorStyle.Render("error: "+e.Error))
+			errMsg := e.Error
+			if i := strings.IndexByte(errMsg, '\n'); i >= 0 {
+				errMsg = errMsg[:i]
+			}
+			if len(errMsg) > 80 {
+				errMsg = errMsg[:80] + "…"
+			}
+			sb.WriteString("\n  " + errorStyle.Render("error: "+errMsg))
 		}
 		for _, w := range e.Warnings {
 			sb.WriteString("\n  " + warningStyle.Render("warning: "+w))
@@ -489,6 +496,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case nodesMsg:
 		if msg.err == nil {
 			m.setNodes(msg.nodes)
+			// Extract unique GRES from nodes for the composer.
+			gresSet := map[string]bool{}
+			for _, n := range msg.nodes {
+				if n.Gres != "" {
+					gresSet[n.Gres] = true
+				}
+			}
+			gresOpts := make([]string, 0, len(gresSet))
+			for g := range gresSet {
+				gresOpts = append(gresOpts, g)
+			}
+			m.composer.setGresOptions(gresOpts)
 		}
 		m.refreshQueries()
 		return m, nil
@@ -496,6 +515,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case partitionsMsgFull:
 		if msg.err == nil {
 			m.setPartitions(msg.parts)
+			names := make([]string, 0, len(msg.parts))
+			for _, p := range msg.parts {
+				names = append(names, p.Name)
+			}
+			m.composer.setPartitionOptions(names)
 		}
 		m.refreshQueries()
 		return m, nil
@@ -540,18 +564,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case composerRunMsg:
 		m.refreshQueries()
-		clientQueries := m.client.Queries()
-		if len(clientQueries) > 0 {
-			last := clientQueries[len(clientQueries)-1]
-			status := "—"
-			if last.StatusCode > 0 {
-				status = fmt.Sprintf("%d", last.StatusCode)
-			}
+		if msg.err != nil {
+			m.composer.setResult("error", msg.err.Error())
+		} else if msg.jobID > 0 {
 			m.composer.setResult(
-				statusColor(last.StatusCode).Render(status)+
-					detailStyle.Render(" · "+last.Duration.Round(time.Millisecond).String()),
-				string(last.Body),
-			)
+				fmt.Sprintf("Job submitted: %d", msg.jobID), "")
+		} else {
+			clientQueries := m.client.Queries()
+			if len(clientQueries) > 0 {
+				last := clientQueries[len(clientQueries)-1]
+				status := "—"
+				if last.StatusCode > 0 {
+					status = fmt.Sprintf("%d", last.StatusCode)
+				}
+				m.composer.setResult(
+					statusColor(last.StatusCode).Render(status)+
+						detailStyle.Render(" · "+last.Duration.Round(time.Millisecond).String()),
+					string(last.Body),
+				)
+			}
+		}
+		return m, nil
+
+	case editorDoneMsg:
+		if msg.err == nil {
+			// Set the script parameter value from the edited file.
+			ep := &endpoints[m.composer.active]
+			for i := range ep.params {
+				if ep.params[i].name == "script" {
+					ep.params[i].value = msg.content
+					m.composer.rebuild()
+					break
+				}
+			}
 		}
 		return m, nil
 
