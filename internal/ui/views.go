@@ -36,6 +36,7 @@ var (
 	partitionsColumns = []table.Column{
 		{Title: "Name", Width: 12},
 		{Title: "Nodes", Width: 18},
+		{Title: "Load", Width: 20},
 		{Title: "Total", Width: 8},
 	}
 )
