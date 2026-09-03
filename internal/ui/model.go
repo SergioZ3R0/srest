@@ -1166,7 +1166,7 @@ func (m Model) View() string {
 	for _, w := range m.warnings {
 		lines = append(lines, warningStyle.Render("warning: "+w.Description))
 	}
-	lines = append(lines, divider, m.help.View(keys))
+	lines = append(lines, divider, keys.helpView())
 
 	block := lipgloss.JoinVertical(lipgloss.Left, lines...)
 	framed := frameStyle.Render(block)

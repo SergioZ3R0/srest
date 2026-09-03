@@ -1,7 +1,10 @@
 package ui
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // keyMap defines the key bindings for srest's UI.
@@ -37,6 +40,28 @@ func (k keyMap) FullHelp() [][]key.Binding {
 		{k.HalfUp, k.HalfDn, k.GoTop, k.GoBot},
 		{k.Select, k.Filter, k.Refresh},
 	}
+}
+
+// helpView renders the full help with section labels.
+func (k keyMap) helpView() string {
+	sectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+
+	renderRow := func(bindings ...key.Binding) string {
+		parts := make([]string, 0, len(bindings))
+		for _, b := range bindings {
+			parts = append(parts, dimStyle.Render(b.Help().Key)+" "+b.Help().Desc)
+		}
+		return strings.Join(parts, "  ")
+	}
+
+	var lines []string
+	lines = append(lines, sectionStyle.Render("Tabs")+":      "+renderRow(k.NextTab, k.PrevTab, k.Home, k.Quit))
+	lines = append(lines, sectionStyle.Render("Navigate")+":   "+renderRow(k.Up, k.Down, k.PageUp, k.PageDn))
+	lines = append(lines, sectionStyle.Render("Scroll")+":     "+renderRow(k.HalfUp, k.HalfDn, k.GoTop, k.GoBot))
+	lines = append(lines, sectionStyle.Render("Actions")+":    "+renderRow(k.Select, k.Filter, k.Refresh))
+	lines = append(lines, sectionStyle.Render("Other")+":      "+renderRow(k.Help))
+	return strings.Join(lines, "\n")
 }
 
 var keys = keyMap{
