@@ -125,7 +125,7 @@ func historyView(entries []history.Entry) string {
 		dur := queryDetailStyle.Render(e.Duration.Round(time.Millisecond).String())
 		ts := queryDetailStyle.Render(e.Timestamp.Format("15:04:05"))
 
-		sb.WriteString(fmt.Sprintf("%s  %s  %-8s  %s  %s", ts, method, code, dur, e.URL))
+		fmt.Fprintf(&sb, "%s  %s  %-8s  %s  %s", ts, method, code, dur, e.URL)
 		if e.Error != "" {
 			errMsg := e.Error
 			if i := strings.IndexByte(errMsg, '\n'); i >= 0 {
@@ -296,11 +296,20 @@ func jobRows(data []api.JobInfo, q string) []table.Row {
 func nodeRows(data []api.NodeInfo, q string) []table.Row {
 	rows := make([]table.Row, 0, len(data))
 	for _, n := range data {
+		// Calculate CPU usage percentage for inline bar.
+		var cpuBar string
+		if n.CPUs > 0 {
+			pct := float64(n.AllocCPUs) / float64(n.CPUs) * 100
+			filled := int(pct / 100 * 10)
+			empty := 10 - filled
+			cpuBar = strings.Repeat("█", filled) + strings.Repeat("░", empty) + fmt.Sprintf(" %3.0f%%", pct)
+		}
 		row := table.Row{
 			n.Name,
 			strings.Join(n.State, ","),
 			fmt.Sprintf("%d", n.CPUs),
 			fmt.Sprintf("%d", n.AllocCPUs),
+			cpuBar,
 			fmt.Sprintf("%dMB", n.RealMemory),
 			strings.Join(n.Partitions, ","),
 		}
@@ -1039,11 +1048,26 @@ func (m Model) searchBar() string {
 	return searchStyle.Render("Filter: "+m.searchInput.View()) + "\n"
 }
 
-// nodeDetailView returns the detail viewport of the selected node.
+// nodeDetailView returns the detail viewport of the selected node with resource bars.
 func (m Model) nodeDetailView() string {
 	idx := m.nodes.Cursor()
 	if idx >= 0 && idx < len(m.nodesData) {
-		return nodeDetailView(m.nodesData[idx])
+		n := m.nodesData[idx]
+		detail := nodeDetailView(n)
+
+		// Append detailed resource usage bars for the selected node.
+		if n.CPUs > 0 || n.RealMemory > 0 {
+			detail += "\n\n"
+			if n.CPUs > 0 {
+				cpuPct := float64(n.AllocCPUs) / float64(n.CPUs) * 100
+				detail += loadBar("cpu", cpuPct, int64(n.AllocCPUs), int64(n.CPUs), "", 20) + "\n"
+			}
+			if n.RealMemory > 0 {
+				memPct := float64(n.AllocMemory) / float64(n.RealMemory) * 100
+				detail += loadBar("mem", memPct, n.AllocMemory, n.RealMemory, "GB", 20) + "\n"
+			}
+		}
+		return detail
 	}
 	return detailStyle.Render("Select a node to see its details.")
 }
@@ -1086,37 +1110,6 @@ func (m Model) partitionsView(width int) string {
 		panelTitleStyle.Render("Partition detail") + "\n" + detail,
 	)
 	return lipgloss.JoinHorizontal(lipgloss.Top, tablePanel, detailPanel)
-}
-
-// loadView renders the Load tab with per-partition resource usage bars.
-func (m Model) loadView(width int) string {
-	panel := width - 4
-	if panel < 30 {
-		panel = 30
-	}
-
-	title := panelTitleStyle.Render("Partition resource usage  (r refresh)")
-
-	if len(m.loadData) == 0 {
-		return title + "\n" + detailStyle.Render("No partition data available.")
-	}
-
-	// Bar width adapts to terminal width but caps at 30 chars.
-	barWidth := panel - 30
-	if barWidth < 10 {
-		barWidth = 10
-	}
-	if barWidth > 30 {
-		barWidth = 30
-	}
-
-	// Render each partition card.
-	cards := make([]string, 0, len(m.loadData))
-	for _, pl := range m.loadData {
-		cards = append(cards, loadPartitionCard(pl, barWidth))
-	}
-
-	return title + "\n\n" + lipgloss.JoinVertical(lipgloss.Left, cards...)
 }
 
 // jobsView renders the Jobs tab: the jobs table on the left and the selected

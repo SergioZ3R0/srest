@@ -29,6 +29,7 @@ var (
 		{Title: "State", Width: 14},
 		{Title: "CPUs", Width: 8},
 		{Title: "Alloc", Width: 6},
+		{Title: "Load", Width: 20},
 		{Title: "Memory", Width: 10},
 		{Title: "Partitions", Width: 16},
 	}
