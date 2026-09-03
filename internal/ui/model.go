@@ -1170,9 +1170,7 @@ func (m Model) View() string {
 		// When help is visible, replace the content with a compact help
 		// view so the layout never overflows. Header and tabs stay fixed.
 		helpLines := strings.Split(keys.helpView(), "\n")
-		for _, l := range helpLines {
-			lines = append(lines, l)
-		}
+		lines = append(lines, helpLines...)
 	} else {
 		lines = append(lines, m.contentView(innerWidth))
 		lines = append(lines, divider, m.help.View(keys))
