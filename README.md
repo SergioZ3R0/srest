@@ -38,6 +38,22 @@ It is written in **Go**, styled with
 
 https://github.com/user-attachments/assets/3a20799b-b075-4556-ad54-e5e0ca921562
 
+## Philosophy
+
+**srest is a pure REST API client.** It talks to `slurmrestd` and nothing
+else — no SSH, no local SLURM commands, no filesystem access. Run it from
+your laptop against any cluster with zero dependencies on the cluster's
+tooling.
+
+This makes srest:
+
+- **Portable** — a single binary, no SLURM installation required.
+- **Secure** — no shell access needed; only the REST API endpoint must be reachable.
+- **Cluster-agnostic** — works against any `slurmrestd` version (v0.0.40–45) without modification.
+
+If a feature isn't exposed by the Slurm REST API, srest doesn't attempt to
+work around it. What you see is exactly what `slurmrestd` provides.
+
 ## Status
 
 `srest` is under active development. Current features:

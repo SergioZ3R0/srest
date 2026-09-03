@@ -345,6 +345,36 @@
                 </div>
             </section>
 
+            <section aria-labelledby="philosophy-heading">
+                <h2 id="philosophy-heading">Philosophy</h2>
+                <div class="features">
+                    <article class="feature">
+                        <div class="icon" role="img" aria-label="http icon">🔗</div>
+                        <h3>Pure REST API</h3>
+                        <p>srest talks to <code>slurmrestd</code> and nothing else — no SSH, no local SLURM commands, no filesystem access.</p>
+                    </article>
+                    <article class="feature">
+                        <div class="icon" role="img" aria-label="portable icon">📦</div>
+                        <h3>Portable</h3>
+                        <p>A single binary. No SLURM installation required on the machine where you run it.</p>
+                    </article>
+                    <article class="feature">
+                        <div class="icon" role="img" aria-label="shield icon">🛡️</div>
+                        <h3>Secure</h3>
+                        <p>No shell access needed — only the REST API endpoint must be reachable from your terminal.</p>
+                    </article>
+                    <article class="feature">
+                        <div class="icon" role="img" aria-label="globe icon">🌍</div>
+                        <h3>Cluster-agnostic</h3>
+                        <p>Works against any <code>slurmrestd</code> version (v0.0.40–45) without modification.</p>
+                    </article>
+                </div>
+                <p style="text-align: center; color: var(--muted); max-width: 640px; margin: 2rem auto 0; font-size: 0.95rem;">
+                    If a feature isn't exposed by the Slurm REST API, srest doesn't attempt to work around it.
+                    What you see is exactly what <code>slurmrestd</code> provides.
+                </p>
+            </section>
+
             <section aria-labelledby="quickstart-heading">
                 <h2 id="quickstart-heading">Quick Start</h2>
                 <div class="steps">
