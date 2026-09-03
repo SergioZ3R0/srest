@@ -75,9 +75,9 @@ work around it. What you see is exactly what `slurmrestd` provides.
 **Tabs** (navigate with `tab`/`shift+tab` or `[`/`]`, `esc` returns to Dashboard):
 
 - **Dashboard** — real cluster overview: nodes up/down, jobs running/pending/completed/failed, partitions and accounts.
-- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Press `j` in Partitions to view jobs by partition.
+- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Press `enter` in Partitions to view jobs by partition.
 - **Nodes** — cluster nodes with state, CPUs, memory and partitions; select a node to see its detail.
-- **Partitions** — partition list with configured/total nodes and max wall time. Press `j` to filter jobs by partition.
+- **Partitions** — partition list with configured/total nodes and max wall time. Press `enter` to filter jobs by partition.
 - **Query** — a request composer with three user-focused endpoints:
   - **ping** — connectivity check.
   - **get jobs** — query with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.
@@ -92,8 +92,13 @@ work around it. What you see is exactly what `slurmrestd` provides.
 | `q` / `Ctrl+C` | quit |
 | `tab` / `]`, `shift+tab` / `[` | next / previous tab |
 | `esc` | go to Dashboard |
+| `↑/↓` / `j/k` | navigate table rows |
+| `PgUp/PgDn` / `b/f` | page up / page down |
+| `Ctrl+U/Ctrl+D` | half page up / down |
+| `Home/End` / `g/G` | go to start / end |
+| `enter` | select / drill-down |
 | `/` | filter the current table |
-| `r` | refresh (Jobs tab) |
+| `r` | refresh (Jobs, Nodes, Partitions) |
 | `?` | toggle help |
 
 ## Stack
