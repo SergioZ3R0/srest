@@ -14,8 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [linux, darwin]
+        goos: [linux, darwin, windows]
         goarch: [amd64, arm64]
+        exclude:
+          - goos: windows
+            goarch: arm64
         include:
           - goos: linux
             goarch: amd64
@@ -29,6 +32,9 @@ jobs:
           - goos: darwin
             goarch: arm64
             suffix: ''
+          - goos: windows
+            goarch: amd64
+            suffix: '.exe'
 
     steps:
       - name: Checkout
@@ -45,8 +51,8 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -o srest .
-          zip "srest-${{ matrix.goos }}-${{ matrix.goarch }}.zip" srest LICENSE
+          go build -o srest${{ matrix.suffix }} .
+          zip "srest-${{ matrix.goos }}-${{ matrix.goarch }}.zip" srest${{ matrix.suffix }} LICENSE
           echo "ARTIFACT=srest-${{ matrix.goos }}-${{ matrix.goarch }}.zip" >> $GITHUB_ENV
 
       - name: Upload artifact

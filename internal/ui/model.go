@@ -1161,12 +1161,22 @@ func (m Model) View() string {
 		divider,
 		m.tabsView(),
 		divider,
-		m.contentView(innerWidth),
 	}
 	for _, w := range m.warnings {
 		lines = append(lines, warningStyle.Render("warning: "+w.Description))
 	}
-	lines = append(lines, divider, keys.helpView())
+
+	if m.help.ShowAll {
+		// When help is visible, replace the content with a compact help
+		// view so the layout never overflows. Header and tabs stay fixed.
+		helpLines := strings.Split(keys.helpView(), "\n")
+		for _, l := range helpLines {
+			lines = append(lines, l)
+		}
+	} else {
+		lines = append(lines, m.contentView(innerWidth))
+		lines = append(lines, divider, m.help.View(keys))
+	}
 
 	block := lipgloss.JoinVertical(lipgloss.Left, lines...)
 	framed := frameStyle.Render(block)

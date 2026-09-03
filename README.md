@@ -135,10 +135,17 @@ Follows the standard Go layout with a strict separation of responsibilities:
 
 Download the zip for your platform from [GitHub Releases](https://github.com/SergioZ3R0/srest/releases) and extract it — no Go installation required:
 
+**Linux / macOS:**
 ```bash
 unzip srest-linux-amd64.zip
 chmod +x srest
 ./srest
+```
+
+**Windows:**
+```
+unzip srest-windows-amd64.zip
+srest.exe
 ```
 
 ### From source

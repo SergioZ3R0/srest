@@ -42,25 +42,52 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	}
 }
 
+// renderKey renders a key binding as "key  desc".
+func renderKey(b key.Binding, style lipgloss.Style) string {
+	return style.Render(b.Help().Key) + " " + b.Help().Desc
+}
+
 // helpView renders the full help with section labels.
 func (k keyMap) helpView() string {
-	sectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)
-	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	section := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	title := lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Bold(true).Underline(true)
 
-	renderRow := func(bindings ...key.Binding) string {
+	row := func(bindings ...key.Binding) string {
 		parts := make([]string, 0, len(bindings))
 		for _, b := range bindings {
-			parts = append(parts, dimStyle.Render(b.Help().Key)+" "+b.Help().Desc)
+			parts = append(parts, renderKey(b, dim))
 		}
-		return strings.Join(parts, "  ")
+		return strings.Join(parts, "   ")
 	}
 
 	var lines []string
-	lines = append(lines, sectionStyle.Render("Tabs")+":      "+renderRow(k.NextTab, k.PrevTab, k.Home, k.Quit))
-	lines = append(lines, sectionStyle.Render("Navigate")+":   "+renderRow(k.Up, k.Down, k.PageUp, k.PageDn))
-	lines = append(lines, sectionStyle.Render("Scroll")+":     "+renderRow(k.HalfUp, k.HalfDn, k.GoTop, k.GoBot))
-	lines = append(lines, sectionStyle.Render("Actions")+":    "+renderRow(k.Select, k.Filter, k.Refresh))
-	lines = append(lines, sectionStyle.Render("Other")+":      "+renderRow(k.Help))
+	lines = append(lines, title.Render("Global"))
+	lines = append(lines, "  "+section.Render("Tabs")+":     "+row(k.NextTab, k.PrevTab, k.Home, k.Quit))
+	lines = append(lines, "  "+section.Render("Help")+":      "+renderKey(k.Help, dim))
+	lines = append(lines, "")
+	lines = append(lines, title.Render("Tables (Jobs / Nodes / Partitions)"))
+	lines = append(lines, "  "+section.Render("Move")+":      "+row(k.Up, k.Down, k.PageUp, k.PageDn))
+	lines = append(lines, "  "+section.Render("Jump")+":       "+row(k.HalfUp, k.HalfDn, k.GoTop, k.GoBot))
+	lines = append(lines, "  "+section.Render("Actions")+":    "+row(k.Select, k.Filter, k.Refresh))
+	lines = append(lines, "  "+dim.Render("enter on Partitions → filter jobs by partition"))
+	lines = append(lines, "")
+	lines = append(lines, title.Render("Query tab"))
+	lines = append(lines, "  "+dim.Render("f")+"           cycle panels (Builder / Response / History / Raw)")
+	lines = append(lines, "  "+dim.Render("r")+"           run request")
+	lines = append(lines, "  "+dim.Render("1 / 2 / 3")+"    select endpoint (ping / get jobs / submit)")
+	lines = append(lines, "  "+dim.Render("↑/k  ↓/j")+"    move cursor in builder")
+	lines = append(lines, "  "+dim.Render("←/h  →/l")+"    cycle parameter options")
+	lines = append(lines, "  "+dim.Render("enter")+"        edit selected parameter")
+	lines = append(lines, "  "+dim.Render("e")+"           open $EDITOR for script param")
+	lines = append(lines, "  "+dim.Render("del / x")+"     clear parameter value")
+	lines = append(lines, "")
+	lines = append(lines, title.Render("Search"))
+	lines = append(lines, "  "+dim.Render("/")+"            open filter")
+	lines = append(lines, "  "+dim.Render("enter")+"        close filter (keeps active)")
+	lines = append(lines, "  "+dim.Render("esc")+"          close filter and clear")
+	lines = append(lines, "  "+dim.Render("ctrl+u")+"       clear input")
+
 	return strings.Join(lines, "\n")
 }
 
