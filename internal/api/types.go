@@ -160,10 +160,12 @@ type NodeInfo struct {
 	Name        string     `json:"name"`
 	State       StringList `json:"state"`
 	CPUs        int        `json:"cpus"`
-	RealMemory  int64      `json:"real_memory"` // MB
-	AllocMemory int64      `json:"alloc_memory"`
+	AllocCPUs   int        `json:"alloc_cpus"`
+	RealMemory  int64      `json:"real_memory"`  // MB
+	AllocMemory int64      `json:"alloc_memory"` // MB
 	Partitions  StringList `json:"partitions"`
 	Gres        string     `json:"gres"`
+	AllocGres   string     `json:"alloc_gres"`
 }
 
 // PartitionInfo is a Slurm partition as returned by GET /slurm/vX/partitions.
@@ -183,4 +185,41 @@ type AccountInfo struct {
 	Name         string `json:"name"`
 	Description  string `json:"description"`
 	Organization string `json:"organization"`
+}
+
+// PartitionLoad holds aggregated resource usage for a single partition,
+// computed client-side from the individual NodeInfo records.
+type PartitionLoad struct {
+	Name       string
+	TotalNodes int
+	TotalCPUs  int
+	UsedCPUs   int
+	TotalMemMB int64
+	UsedMemMB  int64
+	TotalGPUs  int
+	UsedGPUs   int
+}
+
+// CPUAllocPercent returns the CPU utilization percentage (0–100).
+func (pl PartitionLoad) CPUAllocPercent() float64 {
+	if pl.TotalCPUs == 0 {
+		return 0
+	}
+	return float64(pl.UsedCPUs) / float64(pl.TotalCPUs) * 100
+}
+
+// MemAllocPercent returns the memory utilization percentage (0–100).
+func (pl PartitionLoad) MemAllocPercent() float64 {
+	if pl.TotalMemMB == 0 {
+		return 0
+	}
+	return float64(pl.UsedMemMB) / float64(pl.TotalMemMB) * 100
+}
+
+// GPUAllocPercent returns the GPU utilization percentage (0–100).
+func (pl PartitionLoad) GPUAllocPercent() float64 {
+	if pl.TotalGPUs == 0 {
+		return 0
+	}
+	return float64(pl.UsedGPUs) / float64(pl.TotalGPUs) * 100
 }
