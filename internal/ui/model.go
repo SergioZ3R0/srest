@@ -50,6 +50,7 @@ type Model struct {
 	jobsData       []api.JobInfo
 	nodesData      []api.NodeInfo
 	partitionsData []api.PartitionInfo
+	loadData       []api.PartitionLoad
 	accountsData   []api.AccountInfo
 	searchInput    textinput.Model
 	searching      bool
@@ -254,7 +255,7 @@ func (m *Model) setNodes(nodes []api.NodeInfo) {
 // setPartitions fills the Partitions table.
 func (m *Model) setPartitions(parts []api.PartitionInfo) {
 	m.partitionsData = parts
-	m.partitions.SetRows(partitionRows(parts, m.searchInput.Value()))
+	m.partitions.SetRows(partitionRows(parts, m.loadData, m.searchInput.Value()))
 }
 
 // rowMatches reports whether a row contains q (case-insensitive).
@@ -299,6 +300,7 @@ func nodeRows(data []api.NodeInfo, q string) []table.Row {
 			n.Name,
 			strings.Join(n.State, ","),
 			fmt.Sprintf("%d", n.CPUs),
+			fmt.Sprintf("%d", n.AllocCPUs),
 			fmt.Sprintf("%dMB", n.RealMemory),
 			strings.Join(n.Partitions, ","),
 		}
@@ -311,12 +313,24 @@ func nodeRows(data []api.NodeInfo, q string) []table.Row {
 }
 
 // partitionRows builds the partition table rows, optionally filtered by q.
-func partitionRows(data []api.PartitionInfo, q string) []table.Row {
+func partitionRows(data []api.PartitionInfo, loads []api.PartitionLoad, q string) []table.Row {
 	rows := make([]table.Row, 0, len(data))
 	for _, p := range data {
+		// Find matching load data for this partition.
+		loadBar := ""
+		for _, pl := range loads {
+			if pl.Name == p.Name {
+				pct := pl.CPUAllocPercent()
+				filled := int(pct / 100 * 10)
+				empty := 10 - filled
+				loadBar = strings.Repeat("█", filled) + strings.Repeat("░", empty) + fmt.Sprintf(" %3.0f%%", pct)
+				break
+			}
+		}
 		row := table.Row{
 			p.Name,
 			p.Nodes.Configured,
+			loadBar,
 			fmt.Sprintf("%d", p.Nodes.Total),
 		}
 		if !rowMatches(row, q) {
@@ -452,7 +466,7 @@ func (m *Model) applyFilter(q string) {
 	case 2:
 		m.nodes.SetRows(nodeRows(m.nodesData, q))
 	case 3:
-		m.partitions.SetRows(partitionRows(m.partitionsData, q))
+		m.partitions.SetRows(partitionRows(m.partitionsData, m.loadData, q))
 	}
 }
 
@@ -496,6 +510,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case nodesMsg:
 		if msg.err == nil {
 			m.setNodes(msg.nodes)
+			// Compute partition loads from node data.
+			m.loadData = api.ComputePartitionLoads(msg.nodes)
 			// Extract unique GRES from nodes for the composer.
 			gresSet := map[string]bool{}
 			for _, n := range msg.nodes {
@@ -508,6 +524,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				gresOpts = append(gresOpts, g)
 			}
 			m.composer.setGresOptions(gresOpts)
+		}
+		// Refresh partitions table with updated load data.
+		if len(m.partitionsData) > 0 {
+			m.partitions.SetRows(partitionRows(m.partitionsData, m.loadData, m.searchInput.Value()))
 		}
 		m.refreshQueries()
 		return m, nil
@@ -616,7 +636,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// While editing a value in the Query builder, only the composer
 		// handles keys (no global shortcuts, so 'r' can be typed).
-		if m.active == 4 && m.composer.editing {
+		if m.active == 5 && m.composer.editing {
 			var cmd tea.Cmd
 			m.composer, cmd = m.composer.Update(msg)
 			return m, cmd
@@ -640,7 +660,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Query tab: remaining keys (arrows, numbers, letters) drive the
 		// composer and its panels.
-		if m.active == 4 {
+		if m.active == 5 {
 			return m.handleQueryTabKey(msg)
 		}
 
@@ -672,6 +692,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.startSearch()
 				return m, nil
 			}
+			if msg.String() == "r" {
+				return m, nodesCmd(m.client)
+			}
 			m.nodes, _ = m.nodes.Update(msg)
 		case 3:
 			if msg.String() == "/" {
@@ -692,6 +715,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.partitions, _ = m.partitions.Update(msg)
+		case 4:
+			if msg.String() == "r" {
+				return m, nodesCmd(m.client)
+			}
 		}
 
 	case tea.WindowSizeMsg:
@@ -1037,12 +1064,59 @@ func (m Model) partitionsView(width int) string {
 	idx := m.partitions.Cursor()
 	detail := detailStyle.Render("Select a partition to see its details.")
 	if idx >= 0 && idx < len(m.partitionsData) {
-		detail = partitionDetailView(m.partitionsData[idx])
+		p := m.partitionsData[idx]
+		detail = partitionDetailView(p)
+
+		// Append detailed resource load bars for the selected partition.
+		for _, pl := range m.loadData {
+			if pl.Name == p.Name {
+				barWidth := detailW - 30
+				if barWidth < 10 {
+					barWidth = 10
+				}
+				if barWidth > 30 {
+					barWidth = 30
+				}
+				detail += "\n\n" + loadPartitionCard(pl, barWidth)
+				break
+			}
+		}
 	}
 	detailPanel := outputPanelStyle.Width(detailW).Render(
 		panelTitleStyle.Render("Partition detail") + "\n" + detail,
 	)
 	return lipgloss.JoinHorizontal(lipgloss.Top, tablePanel, detailPanel)
+}
+
+// loadView renders the Load tab with per-partition resource usage bars.
+func (m Model) loadView(width int) string {
+	panel := width - 4
+	if panel < 30 {
+		panel = 30
+	}
+
+	title := panelTitleStyle.Render("Partition resource usage  (r refresh)")
+
+	if len(m.loadData) == 0 {
+		return title + "\n" + detailStyle.Render("No partition data available.")
+	}
+
+	// Bar width adapts to terminal width but caps at 30 chars.
+	barWidth := panel - 30
+	if barWidth < 10 {
+		barWidth = 10
+	}
+	if barWidth > 30 {
+		barWidth = 30
+	}
+
+	// Render each partition card.
+	cards := make([]string, 0, len(m.loadData))
+	for _, pl := range m.loadData {
+		cards = append(cards, loadPartitionCard(pl, barWidth))
+	}
+
+	return title + "\n\n" + lipgloss.JoinVertical(lipgloss.Left, cards...)
 }
 
 // jobsView renders the Jobs tab: the jobs table on the left and the selected

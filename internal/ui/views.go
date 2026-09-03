@@ -28,6 +28,7 @@ var (
 		{Title: "Name", Width: 12},
 		{Title: "State", Width: 14},
 		{Title: "CPUs", Width: 8},
+		{Title: "Alloc", Width: 6},
 		{Title: "Memory", Width: 10},
 		{Title: "Partitions", Width: 16},
 	}
@@ -35,6 +36,7 @@ var (
 	partitionsColumns = []table.Column{
 		{Title: "Name", Width: 12},
 		{Title: "Nodes", Width: 18},
+		{Title: "Load", Width: 20},
 		{Title: "Total", Width: 8},
 	}
 )
@@ -220,8 +222,11 @@ func nodeDetailView(n api.NodeInfo) string {
 		f("Name", n.Name),
 		f("State", strings.Join(n.State, ",")),
 		f("CPUs", fmt.Sprintf("%d", n.CPUs)),
+		f("Alloc CPUs", fmt.Sprintf("%d", n.AllocCPUs)),
 		f("Memory", fmt.Sprintf("%dMB", n.RealMemory)),
 		f("Allocated", fmt.Sprintf("%dMB", n.AllocMemory)),
+		f("GRES", n.Gres),
+		f("Alloc GRES", n.AllocGres),
 		f("Partitions", strings.Join(n.Partitions, ",")),
 	)
 }
