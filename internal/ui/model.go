@@ -449,15 +449,27 @@ func qosCmd(c *api.Client) tea.Cmd {
 func (m *Model) startSearch() {
 	m.searching = true
 	m.searchInput.Focus()
-	m.searchInput.SetValue("")
+	// Keep existing filter text if any, so user can refine.
 }
 
 // handleSearchKey routes keys while a table filter is active.
 func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "enter", "esc":
+	case "enter":
+		// Close search but keep the filter active.
 		m.searching = false
 		m.searchInput.Blur()
+		return m, nil
+	case "esc":
+		// Close search and clear the filter.
+		m.searching = false
+		m.searchInput.Blur()
+		m.searchInput.SetValue("")
+		m.applyFilter("")
+		return m, nil
+	case "ctrl+u":
+		// Clear the input but stay in search mode.
+		m.searchInput.SetValue("")
 		m.applyFilter("")
 		return m, nil
 	}
@@ -645,7 +657,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// While editing a value in the Query builder, only the composer
 		// handles keys (no global shortcuts, so 'r' can be typed).
-		if m.active == 5 && m.composer.editing {
+		if m.active == 4 && m.composer.editing {
 			var cmd tea.Cmd
 			m.composer, cmd = m.composer.Update(msg)
 			return m, cmd
@@ -669,7 +681,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Query tab: remaining keys (arrows, numbers, letters) drive the
 		// composer and its panels.
-		if m.active == 5 {
+		if m.active == 4 {
 			return m.handleQueryTabKey(msg)
 		}
 
@@ -704,14 +716,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.String() == "r" {
 				return m, nodesCmd(m.client)
 			}
-			m.nodes, _ = m.nodes.Update(msg)
+			var cmd tea.Cmd
+			m.nodes, cmd = m.nodes.Update(msg)
+			return m, cmd
 		case 3:
 			if msg.String() == "/" {
 				m.startSearch()
 				return m, nil
 			}
-			if msg.String() == "j" {
-				// Switch to Jobs tab pre-filtered by the selected partition.
+			if msg.String() == "enter" {
 				idx := m.partitions.Cursor()
 				if idx >= 0 && idx < len(m.partitionsData) {
 					pname := m.partitionsData[idx].Name
@@ -723,11 +736,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
-			m.partitions, _ = m.partitions.Update(msg)
-		case 4:
-			if msg.String() == "r" {
-				return m, nodesCmd(m.client)
-			}
+			var cmd tea.Cmd
+			m.partitions, cmd = m.partitions.Update(msg)
+			return m, cmd
 		}
 
 	case tea.WindowSizeMsg:
