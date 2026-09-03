@@ -414,11 +414,11 @@
 
             var lines = [
                 [{t:'prompt',v:'$ '},{t:'highlight',v:'go'},{t:'output',v:' build -o srest .'}],
+                [{t:'prompt',v:'$ '},{t:'highlight',v:'./srest'}],
                 [{t:'output',v:'  '},{t:'highlight',v:'Connected'},{t:'output',v:' · Slurm 26.05.2 · API v0.0.45'}],
                 [{t:'output',v:'  Dashboard:'},{t:'highlight',v:' Nodes 2/2'},{t:'output',v:' ·'},{t:'highlight',v:' Jobs running 1'},{t:'output',v:' ·'},{t:'highlight',v:' Partitions 2'}],
                 [{t:'output',v:'  Jobs:'}],
                 [{t:'output',v:'  42   sim-train   alice   RUNNING   01:23:45   c[1-2]'}],
-                [{t:'prompt',v:'$ '},{t:'highlight',v:'./srest'},{t:'output',v:' --tab query'}],
             ];
 
             var lineIdx = 0, spanIdx = 0, charIdx = 0;
