@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>srest | Slurm REST API TUI</title>
-    <meta name="description" content="srest is a terminal user interface for the Slurm REST API. Monitor jobs, nodes and partitions, submit jobs, and compose API requests from your terminal — no SSH needed. Pre-built binaries for Linux and macOS.">
-    <meta name="keywords" content="Slurm TUI, slurmrestd client, HPC terminal UI, Slurm REST API, job monitor, Bubble Tea, cluster management, sbatch alternative">
+    <title>srest | Slurm REST API TUI Terminal Client</title>
+    <meta name="description" content="srest is a terminal user interface (TUI) for slurmrestd. Manage Slurm workloads, monitor nodes and partitions, and use the interactive query builder — all from your terminal.">
+    <meta name="keywords" content="srest, slurm, slurmrestd, tui, go, bubble tea, hpc, cluster, terminal client, Slurm REST API, job monitor">
 
     <!-- Open Graph -->
     <meta property="og:title" content="srest | Slurm REST API TUI">
@@ -34,15 +34,20 @@
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "srest",
-        "operatingSystem": "Linux",
+        "alternativeName": "Slurm REST API TUI",
+        "operatingSystem": "Linux, macOS, Windows",
         "applicationCategory": "DeveloperApplication",
-        "description": "A terminal user interface for the Slurm REST API: monitor jobs, nodes and partitions, submit jobs, and compose requests from the terminal.",
+        "description": "Terminal User Interface (TUI) written in Go for interacting with the Slurm REST API (slurmrestd). Monitor jobs, nodes, partitions and compose API requests from your terminal.",
         "url": "https://srest.scszero.com/",
         "sameAs": "https://github.com/SergioZ3R0/srest",
         "offers": {
             "@type": "Offer",
-            "price": 0,
+            "price": "0",
             "priceCurrency": "USD"
+        },
+        "softwareHelp": {
+            "@type": "CreativeWork",
+            "url": "https://srest.scszero.com/docs.html"
         },
         "author": {
             "@type": "Person",
