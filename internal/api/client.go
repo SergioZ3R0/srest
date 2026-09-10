@@ -10,6 +10,7 @@ package api
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,14 +51,18 @@ type Client struct {
 }
 
 // New creates a new API client with the given configuration.
-func New(baseURL, jwt, username string) *Client {
+func New(baseURL, jwt, username string, insecure bool) *Client {
+	transport := &http.Transport{}
+	if insecure {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+	}
 	return &Client{
 		baseURL:  baseURL,
 		jwt:      jwt,
 		username: username,
 		httpClient: &http.Client{
-			// Global timeout to avoid hanging requests.
-			Timeout: 10 * time.Second,
+			Timeout:   10 * time.Second,
+			Transport: transport,
 		},
 	}
 }

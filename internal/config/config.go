@@ -28,6 +28,9 @@ type Config struct {
 	// APIVersion is the API version to use (optional, e.g. "v0.0.44"). When
 	// empty, srest auto-detects the version supported by the cluster.
 	APIVersion string
+
+	// Insecure skips TLS certificate verification when true.
+	Insecure bool
 }
 
 // Load reads the configuration from environment variables and applies default
@@ -38,6 +41,7 @@ func Load() Config {
 		JWT:        os.Getenv("SLURM_JWT"),
 		Username:   getEnv("SLURM_USER_NAME", currentUser()),
 		APIVersion: os.Getenv("SLURM_API_VERSION"),
+		Insecure:   os.Getenv("SLURM_INSECURE") == "true",
 	}
 }
 

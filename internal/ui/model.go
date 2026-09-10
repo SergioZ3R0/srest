@@ -701,6 +701,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.String() == "r" {
 				return m, jobsCmd(m.client)
 			}
+			if msg.String() == "e" {
+				path, err := exportJobs(m.jobsData)
+				if err == nil {
+					m.status = "Exported to " + path
+				} else {
+					m.status = "Export failed: " + err.Error()
+				}
+				return m, nil
+			}
 			var cmd tea.Cmd
 			m.jobs, cmd = m.jobs.Update(msg)
 			if id := m.cursorJobID(); id != 0 && id != m.selectedJob {
@@ -715,6 +724,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if msg.String() == "r" {
 				return m, nodesCmd(m.client)
+			}
+			if msg.String() == "e" {
+				path, err := exportNodes(m.nodesData)
+				if err == nil {
+					m.status = "Exported to " + path
+				} else {
+					m.status = "Export failed: " + err.Error()
+				}
+				return m, nil
 			}
 			var cmd tea.Cmd
 			m.nodes, cmd = m.nodes.Update(msg)
@@ -735,6 +753,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.applyFilter(pname)
 					return m, nil
 				}
+			}
+			if msg.String() == "e" {
+				path, err := exportPartitions(m.partitionsData)
+				if err == nil {
+					m.status = "Exported to " + path
+				} else {
+					m.status = "Export failed: " + err.Error()
+				}
+				return m, nil
 			}
 			var cmd tea.Cmd
 			m.partitions, cmd = m.partitions.Update(msg)
@@ -1067,7 +1094,7 @@ func (m Model) nodeDetailView() string {
 		detail := nodeDetailView(n)
 
 		// Append detailed resource usage bars for the selected node.
-		if n.CPUs > 0 || n.RealMemory > 0 {
+		if n.CPUs > 0 || n.RealMemory > 0 || n.Gres != "" {
 			detail += "\n\n"
 			if n.CPUs > 0 {
 				cpuPct := float64(n.AllocCPUs) / float64(n.CPUs) * 100
@@ -1076,6 +1103,12 @@ func (m Model) nodeDetailView() string {
 			if n.RealMemory > 0 {
 				memPct := float64(n.AllocMemory) / float64(n.RealMemory) * 100
 				detail += loadBar("mem", memPct, n.AllocMemory, n.RealMemory, "GB", 20) + "\n"
+			}
+			totalGPUs := api.ParseGRESCount(n.Gres)
+			if totalGPUs > 0 {
+				usedGPUs := api.ParseGRESCount(n.AllocGres)
+				gpuPct := float64(usedGPUs) / float64(totalGPUs) * 100
+				detail += loadBar("gpu", gpuPct, int64(usedGPUs), int64(totalGPUs), "", 20) + "\n"
 			}
 		}
 		return detail

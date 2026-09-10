@@ -7,3 +7,4 @@
 
 # Dependencias de Go
 /vendor/
+srest-*.csv

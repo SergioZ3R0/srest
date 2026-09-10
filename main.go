@@ -15,7 +15,7 @@ import (
 func main() {
 	cfg := config.Load()
 
-	client := api.New(cfg.URL, cfg.JWT, cfg.Username)
+	client := api.New(cfg.URL, cfg.JWT, cfg.Username, cfg.Insecure)
 
 	// If the user pinned an explicit version, use it; otherwise the UI will
 	// auto-detect it.
