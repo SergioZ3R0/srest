@@ -34,8 +34,8 @@ func ComputePartitionLoads(nodes []NodeInfo) []PartitionLoad {
 			a.usedCPUs += n.AllocCPUs
 			a.totalMem += n.RealMemory
 			a.usedMem += n.AllocMemory
-			a.totalGPUs += parseGRESCount(n.Gres)
-			a.usedGPUs += parseGRESCount(n.AllocGres)
+			a.totalGPUs += ParseGRESCount(n.Gres)
+			a.usedGPUs += ParseGRESCount(n.AllocGres)
 		}
 	}
 
@@ -60,14 +60,14 @@ func ComputePartitionLoads(nodes []NodeInfo) []PartitionLoad {
 	return out
 }
 
-// parseGRESCount extracts the GPU count from a GRES string.
+// ParseGRESCount extracts the GPU count from a GRES string.
 // Supported formats:
 //
 //	""            → 0
 //	"gpu:4"       → 4
 //	"gpu:a100:4"  → 4
 //	"gpu:4,gpu:2" → 6  (summed)
-func parseGRESCount(s string) int {
+func ParseGRESCount(s string) int {
 	if s == "" {
 		return 0
 	}

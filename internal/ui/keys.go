@@ -14,6 +14,7 @@ type keyMap struct {
 	PrevTab key.Binding
 	Home    key.Binding
 	Help    key.Binding
+	Export  key.Binding
 	Up      key.Binding
 	Down    key.Binding
 	PageUp  key.Binding
@@ -29,7 +30,7 @@ type keyMap struct {
 
 // ShortHelp returns the bindings shown in the footer by default.
 func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.PrevTab, k.NextTab, k.Home, k.Help, k.Quit}
+	return []key.Binding{k.PrevTab, k.NextTab, k.Export, k.Help, k.Quit}
 }
 
 // FullHelp returns the bindings shown when the help is expanded.
@@ -69,7 +70,7 @@ func (k keyMap) helpView() string {
 	lines = append(lines, title.Render("Tables (Jobs / Nodes / Partitions)"))
 	lines = append(lines, "  "+section.Render("Move")+":      "+row(k.Up, k.Down, k.PageUp, k.PageDn))
 	lines = append(lines, "  "+section.Render("Jump")+":       "+row(k.HalfUp, k.HalfDn, k.GoTop, k.GoBot))
-	lines = append(lines, "  "+section.Render("Actions")+":    "+row(k.Select, k.Filter, k.Refresh))
+	lines = append(lines, "  "+section.Render("Actions")+":    "+row(k.Select, k.Filter, k.Refresh, k.Export))
 	lines = append(lines, "  "+dim.Render("enter on Partitions → filter jobs by partition"))
 	lines = append(lines, "")
 	lines = append(lines, title.Render("Query tab"))
@@ -151,6 +152,10 @@ var keys = keyMap{
 	Filter: key.NewBinding(
 		key.WithKeys("/"),
 		key.WithHelp("/", "filter"),
+	),
+	Export: key.NewBinding(
+		key.WithKeys("e"),
+		key.WithHelp("e", "export CSV"),
 	),
 	Refresh: key.NewBinding(
 		key.WithKeys("r"),
