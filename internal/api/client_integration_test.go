@@ -20,7 +20,7 @@ func TestPingIntegration(t *testing.T) {
 		t.Skip("SLURM_URL and SLURM_JWT not set; skipping integration test")
 	}
 
-	c := New(url, jwt, "slurm", false)
+	c := New(url, jwt, "slurm", false, "", nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

@@ -41,6 +41,11 @@ type Client struct {
 	username   string
 	httpClient *http.Client
 
+	// Proxy auth: when authToken is set, it replaces X-SLURM-USER-TOKEN with
+	// Authorization: Bearer <token>.
+	authToken     string
+	customHeaders map[string]string
+
 	// version is the data_parser version we talk to. A zero Version means it
 	// has not been determined yet.
 	version Version
@@ -51,19 +56,36 @@ type Client struct {
 }
 
 // New creates a new API client with the given configuration.
-func New(baseURL, jwt, username string, insecure bool) *Client {
+func New(baseURL, jwt, username string, insecure bool, authToken string, customHeaders map[string]string) *Client {
 	transport := &http.Transport{}
 	if insecure {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
 	}
 	return &Client{
-		baseURL:  baseURL,
-		jwt:      jwt,
-		username: username,
+		baseURL:       baseURL,
+		jwt:           jwt,
+		username:      username,
+		authToken:     authToken,
+		customHeaders: customHeaders,
 		httpClient: &http.Client{
 			Timeout:   10 * time.Second,
 			Transport: transport,
 		},
+	}
+}
+
+// setAuthHeaders applies the correct authentication headers to a request.
+// When authToken is configured (proxy mode), it sends Authorization: Bearer
+// plus any custom headers. Otherwise it sends the standard Slurm JWT headers.
+func (c *Client) setAuthHeaders(req *http.Request) {
+	if c.authToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.authToken)
+	} else {
+		req.Header.Set("X-SLURM-USER-TOKEN", c.jwt)
+		req.Header.Set("X-SLURM-USER-NAME", c.username)
+	}
+	for k, v := range c.customHeaders {
+		req.Header.Set(k, v)
 	}
 }
 
@@ -242,8 +264,7 @@ func (c *Client) SubmitJob(ctx context.Context, body map[string]any) (SubmitResu
 	if err != nil {
 		return SubmitResult{}, fmt.Errorf("building request: %w", err)
 	}
-	req.Header.Set("X-SLURM-USER-TOKEN", c.jwt)
-	req.Header.Set("X-SLURM-USER-NAME", c.username)
+	c.setAuthHeaders(req)
 	req.Header.Set("Content-Type", "application/json")
 
 	start := time.Now()
@@ -295,8 +316,7 @@ func (c *Client) NodeState(ctx context.Context, name, state, reason string) erro
 	if err != nil {
 		return fmt.Errorf("building request: %w", err)
 	}
-	req.Header.Set("X-SLURM-USER-TOKEN", c.jwt)
-	req.Header.Set("X-SLURM-USER-NAME", c.username)
+	c.setAuthHeaders(req)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
@@ -408,8 +428,7 @@ func (c *Client) get(ctx context.Context, version Version, path string, out any)
 	}
 
 	// Authentication headers required by slurmrestd.
-	req.Header.Set("X-SLURM-USER-TOKEN", c.jwt)
-	req.Header.Set("X-SLURM-USER-NAME", c.username)
+	c.setAuthHeaders(req)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
