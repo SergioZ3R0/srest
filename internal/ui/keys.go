@@ -26,6 +26,8 @@ type keyMap struct {
 	Select  key.Binding
 	Filter  key.Binding
 	Refresh key.Binding
+	Cancel  key.Binding
+	Requeue key.Binding
 }
 
 // ShortHelp returns the bindings shown in the footer by default.
@@ -73,9 +75,13 @@ func (k keyMap) helpView() string {
 	lines = append(lines, "  "+section.Render("Actions")+":    "+row(k.Select, k.Filter, k.Refresh, k.Export))
 	lines = append(lines, "  "+dim.Render("enter on Partitions → filter jobs by partition"))
 	lines = append(lines, "")
+	lines = append(lines, title.Render("Jobs tab"))
+	lines = append(lines, "  "+dim.Render("x")+"           cancel selected job")
+	lines = append(lines, "  "+dim.Render("r")+"           requeue selected job")
+	lines = append(lines, "")
 	lines = append(lines, title.Render("Query tab"))
 	lines = append(lines, "  "+dim.Render("f")+"           cycle panels (Builder / Response / History / Raw)")
-	lines = append(lines, "  "+dim.Render("r")+"           run request")
+	lines = append(lines, "  "+dim.Render("F5")+"          run request")
 	lines = append(lines, "  "+dim.Render("1 / 2 / 3")+"    select endpoint (ping / get jobs / submit)")
 	lines = append(lines, "  "+dim.Render("↑/k  ↓/j")+"    move cursor in builder")
 	lines = append(lines, "  "+dim.Render("←/h  →/l")+"    cycle parameter options")
@@ -158,7 +164,15 @@ var keys = keyMap{
 		key.WithHelp("e", "export CSV"),
 	),
 	Refresh: key.NewBinding(
+		key.WithKeys("f5"),
+		key.WithHelp("F5", "refresh"),
+	),
+	Cancel: key.NewBinding(
+		key.WithKeys("x"),
+		key.WithHelp("x", "cancel job"),
+	),
+	Requeue: key.NewBinding(
 		key.WithKeys("r"),
-		key.WithHelp("r", "refresh"),
+		key.WithHelp("r", "requeue job"),
 	),
 }

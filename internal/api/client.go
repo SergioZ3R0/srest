@@ -332,6 +332,79 @@ func (c *Client) NodeState(ctx context.Context, name, state, reason string) erro
 	return nil
 }
 
+// CancelJob sends a DELETE request to cancel a job by ID.
+func (c *Client) CancelJob(ctx context.Context, id uint32) error {
+	v, ok := c.Version()
+	if !ok {
+		return fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+
+	endpoint := fmt.Sprintf("%s/slurm/%s/job/%d", c.baseURL, v, id)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, nil)
+	if err != nil {
+		return fmt.Errorf("building request: %w", err)
+	}
+	c.setAuthHeaders(req)
+
+	start := time.Now()
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		c.recordQuery(Query{Method: http.MethodDelete, URL: endpoint, Duration: time.Since(start), Error: err})
+		return fmt.Errorf("contacting %s: %w", endpoint, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		se := &StatusError{Code: resp.StatusCode, Body: string(body)}
+		c.recordQuery(Query{Method: http.MethodDelete, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Error: se, Body: body})
+		return se
+	}
+
+	c.recordQuery(Query{Method: http.MethodDelete, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Body: body})
+	return nil
+}
+
+// RequeueJob sends a POST request to requeue a job (sets it back to PENDING).
+func (c *Client) RequeueJob(ctx context.Context, id uint32) error {
+	v, ok := c.Version()
+	if !ok {
+		return fmt.Errorf("API version not determined; call Detect or SetVersion first")
+	}
+
+	body := map[string]any{"job_id": id}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshaling request: %w", err)
+	}
+
+	endpoint := fmt.Sprintf("%s/slurm/%s/job/%d", c.baseURL, v, id)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(string(data)))
+	if err != nil {
+		return fmt.Errorf("building request: %w", err)
+	}
+	c.setAuthHeaders(req)
+	req.Header.Set("Content-Type", "application/json")
+
+	start := time.Now()
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		c.recordQuery(Query{Method: http.MethodPost, URL: endpoint, Duration: time.Since(start), Error: err})
+		return fmt.Errorf("contacting %s: %w", endpoint, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		se := &StatusError{Code: resp.StatusCode, Body: string(respBody)}
+		c.recordQuery(Query{Method: http.MethodPost, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Error: se, Body: respBody})
+		return se
+	}
+
+	c.recordQuery(Query{Method: http.MethodPost, URL: endpoint, StatusCode: resp.StatusCode, Duration: time.Since(start), Body: respBody})
+	return nil
+}
+
 // Partitions returns the names of all partitions visible to the user. Used by
 // the query builder to offer partition values as selectable options.
 func (c *Client) Partitions(ctx context.Context) ([]string, error) {

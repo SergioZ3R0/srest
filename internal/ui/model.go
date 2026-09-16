@@ -366,6 +366,33 @@ func jobDetailCmd(c *api.Client, id uint32) tea.Cmd {
 	}
 }
 
+// jobActionMsg carries the result of a cancel or requeue action.
+type jobActionMsg struct {
+	action string
+	jobID  uint32
+	err    error
+}
+
+// cancelJobCmd sends a cancel request for the given job.
+func cancelJobCmd(c *api.Client, id uint32) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		err := c.CancelJob(ctx, id)
+		return jobActionMsg{action: "cancel", jobID: id, err: err}
+	}
+}
+
+// requeueJobCmd sends a requeue request for the given job.
+func requeueJobCmd(c *api.Client, id uint32) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		err := c.RequeueJob(ctx, id)
+		return jobActionMsg{action: "requeue", jobID: id, err: err}
+	}
+}
+
 // setJobDetail fills the job detail panel.
 func (m *Model) setJobDetail(jd api.JobDetail) {
 	m.jobDetail = jd
@@ -603,6 +630,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.refreshQueries()
 		return m, nil
 
+	case jobActionMsg:
+		m.refreshQueries()
+		if msg.err != nil {
+			m.status = fmt.Sprintf("%s job %d: %v", msg.action, msg.jobID, msg.err)
+			return m, nil
+		}
+		m.status = fmt.Sprintf("Job %d %sed", msg.jobID, msg.action)
+		// Refresh jobs list after action.
+		return m, jobsCmd(m.client)
+
 	case composerRunMsg:
 		m.refreshQueries()
 		if msg.err != nil {
@@ -698,8 +735,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.startSearch()
 				return m, nil
 			}
-			if msg.String() == "r" {
+			if msg.String() == "f5" {
 				return m, jobsCmd(m.client)
+			}
+			if msg.String() == "x" {
+				id := m.cursorJobID()
+				if id != 0 {
+					return m, cancelJobCmd(m.client, id)
+				}
+			}
+			if msg.String() == "r" {
+				id := m.cursorJobID()
+				if id != 0 {
+					return m, requeueJobCmd(m.client, id)
+				}
 			}
 			if msg.String() == "e" {
 				path, err := exportJobs(m.jobsData)
@@ -722,7 +771,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.startSearch()
 				return m, nil
 			}
-			if msg.String() == "r" {
+			if msg.String() == "f5" {
 				return m, nodesCmd(m.client)
 			}
 			if msg.String() == "e" {
@@ -741,6 +790,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.String() == "/" {
 				m.startSearch()
 				return m, nil
+			}
+			if msg.String() == "f5" {
+				return m, tea.Batch(partitionsCmd(m.client), nodesCmd(m.client))
 			}
 			if msg.String() == "enter" {
 				idx := m.partitions.Cursor()
@@ -867,7 +919,7 @@ func rawRunCmd(c *api.Client, path string) tea.Cmd {
 }
 
 // handleQueryTabKey routes keys within the Query tab based on the focused
-// panel. 'f' cycles focus; 'r' runs the built request from anywhere.
+// panel. 'f' cycles focus; 'F5' runs the built request from anywhere.
 func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "f":
@@ -878,7 +930,7 @@ func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.rawInput.Blur()
 		}
 		return m, nil
-	case "r":
+	case "f5":
 		return m, m.composer.run(m.client)
 	}
 
@@ -1069,7 +1121,7 @@ func (m Model) nodesView(width int) string {
 	detailW := panel - tableW
 
 	tablePanel := composerPanelStyle.Width(tableW).Render(
-		panelTitleStyle.Render("Nodes (/ search)") + "\n" + m.searchBar() + m.nodes.View(),
+		panelTitleStyle.Render("Nodes (/ search · F5 refresh)") + "\n" + m.searchBar() + m.nodes.View(),
 	)
 	detail := m.nodeDetailView()
 	detailPanel := outputPanelStyle.Width(detailW).Render(
@@ -1127,7 +1179,7 @@ func (m Model) partitionsView(width int) string {
 	detailW := panel - tableW
 
 	tablePanel := composerPanelStyle.Width(tableW).Render(
-		panelTitleStyle.Render("Partitions (/ search · j: jobs)") + "\n" + m.searchBar() + m.partitions.View(),
+		panelTitleStyle.Render("Partitions (/ search · F5 refresh · j: jobs)") + "\n" + m.searchBar() + m.partitions.View(),
 	)
 	idx := m.partitions.Cursor()
 	detail := detailStyle.Render("Select a partition to see its details.")
@@ -1167,7 +1219,7 @@ func (m Model) jobsView(width int) string {
 	detailW := panel - tableW
 
 	tablePanel := composerPanelStyle.Width(tableW).Render(
-		panelTitleStyle.Render("Jobs (/ search · r refresh)") + "\n" + m.searchBar() + m.jobs.View(),
+		panelTitleStyle.Render("Jobs (/ search · F5 refresh · x cancel · r requeue)") + "\n" + m.searchBar() + m.jobs.View(),
 	)
 	detailPanel := outputPanelStyle.Width(detailW).Render(
 		panelTitleStyle.Render("Job detail") + "\n" + m.jobDetailVP.View(),

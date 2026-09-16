@@ -54,29 +54,23 @@ This makes srest:
 If a feature isn't exposed by the Slurm REST API, srest doesn't attempt to
 work around it. What you see is exactly what `slurmrestd` provides.
 
-## Status
-
-`srest` is under active development. Current features:
-
-- [x] Encrypted credential vault (AES-256-GCM) — store JWT and connection settings securely.
-- [x] HTTP client with JWT authentication (`X-SLURM-USER-TOKEN`, `X-SLURM-USER-NAME`).
-- [x] Auto-detection of the `data_parser` version (v0.0.40 – v0.0.45) or a version pinned via configuration.
-- [x] Version-gating and reporting of `warnings`/`errors` returned by slurmrestd.
-- [x] Dashboard with real cluster stats (nodes up/down, jobs by state, partitions, accounts).
-- [x] Real-time views: Jobs, Nodes, Partitions (with per-item detail panels).
-- [x] Table search/filter (`/`).
-- [x] Query builder with user-focused endpoints (ping, get jobs, submit jobs) and cluster-gathered options (state, account, partition, qos, gres).
-- [x] Custom query panel for writing/pasting any request path.
-- [x] Job submission with script path, $EDITOR support, and gathered partition/account/qos/gres options.
-- [x] Persistent request history (saved to `~/.local/share/srest/history.json`, max 100 entries).
-- [ ] Job cancellation and requeue.
-
 ## Features
 
-**Tabs** (navigate with `tab`/`shift+tab` or `[`/`]`, `esc` returns to Dashboard):
+- **Encrypted credential vault** — AES-256-GCM encrypted config file (`~/.srest/config.vault`) with PBKDF2 key derivation.
+- **JWT authentication** — `X-SLURM-USER-TOKEN` and `X-SLURM-USER-NAME` headers, plus Bearer token support for proxy setups.
+- **Auto-detection** — discovers the `slurmrestd` data_parser version (v0.0.40–v0.0.45) or accepts a pinned version.
+- **Version-gating** — adapts request fields to the detected API version; surfaces warnings and errors from slurmrestd.
+- **Dashboard** — real-time cluster overview: nodes up/down, jobs by state, partitions and accounts.
+- **Jobs, Nodes, Partitions** — live tables with detail panels, search/filter (`/`), and CSV export.
+- **Job actions** — cancel (`x`) and requeue (`r`) jobs directly from the TUI.
+- **Query builder** — visual request composer for ping, get jobs, and submit jobs with cluster-gathered options (state, account, partition, qos, gres).
+- **Custom query** — write or paste any request path and run it directly.
+- **Request history** — every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
+
+### Tabs
 
 - **Dashboard** — real cluster overview: nodes up/down, jobs running/pending/completed/failed, partitions and accounts.
-- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Press `enter` in Partitions to view jobs by partition.
+- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Cancel (`x`) and requeue (`r`) jobs directly from the TUI. Press `enter` in Partitions to view jobs by partition.
 - **Nodes** — cluster nodes with state, CPUs, memory and partitions; select a node to see its detail.
 - **Partitions** — partition list with configured/total nodes and max wall time. Press `enter` to filter jobs by partition.
 - **Query** — a request composer with three user-focused endpoints:
@@ -99,7 +93,9 @@ work around it. What you see is exactly what `slurmrestd` provides.
 | `Home/End` / `g/G` | go to start / end |
 | `enter` | select / drill-down |
 | `/` | filter the current table |
-| `r` | refresh (Jobs, Nodes, Partitions) |
+| `F5` | refresh (Jobs, Nodes, Partitions) |
+| `x` | cancel selected job (Jobs tab) |
+| `r` | requeue selected job (Jobs tab) |
 | `?` | toggle help |
 
 ## Stack
