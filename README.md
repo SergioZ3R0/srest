@@ -58,6 +58,7 @@ work around it. What you see is exactly what `slurmrestd` provides.
 
 `srest` is under active development. Current features:
 
+- [x] Encrypted credential vault (AES-256-GCM) — store JWT and connection settings securely.
 - [x] HTTP client with JWT authentication (`X-SLURM-USER-TOKEN`, `X-SLURM-USER-NAME`).
 - [x] Auto-detection of the `data_parser` version (v0.0.40 – v0.0.45) or a version pinned via configuration.
 - [x] Version-gating and reporting of `warnings`/`errors` returned by slurmrestd.
@@ -113,14 +114,14 @@ Follows the standard Go layout with a strict separation of responsibilities:
 
 ```
 .
-├── main.go                  # Entry point: configuration + Bubble Tea startup
+├── main.go                  # Entry point: vault CLI + Bubble Tea startup
 └── internal/
-    ├── config/              # Configuration loading (environment)
+    ├── config/              # Configuration loading (env vars + encrypted vault)
     ├── api/                 # Pure HTTP client (no UI)
     └── ui/                  # Bubble Tea model, view and update
 ```
 
-- `internal/config` loads configuration, prioritizing environment variables.
+- `internal/config` loads configuration from environment variables or the encrypted vault (`~/.srest/config.vault`), prioritizing env vars.
 - `internal/api` is a pure HTTP client: no UI. It is consumed asynchronously
   via `tea.Cmd`.
 - `internal/ui` consumes `internal/api` without blocking the interface.
@@ -156,7 +157,11 @@ go build -o srest .
 
 ### Configuration
 
-`srest` is configured through environment variables:
+`srest` is configured through environment variables or an encrypted vault file.
+
+**Priority:** Environment variables > Encrypted vault (`~/.srest/config.vault`) > Defaults.
+
+#### Environment variables
 
 | Variable            | Required | Description                                                        |
 | ------------------- | -------- | ------------------------------------------------------------------ |
@@ -164,6 +169,7 @@ go build -o srest .
 | `SLURM_JWT`         | Yes*     | JWT token for the `X-SLURM-USER-TOKEN` header.                     |
 | `SLURM_USER_NAME`   | No       | User for `X-SLURM-USER-NAME`. Defaults to the current OS user.     |
 | `SLURM_API_VERSION` | No       | API version to use (e.g. `v0.0.45`). If omitted, it is auto-detected. |
+| `SREST_VAULT_PASS`  | No       | Password to auto-decrypt the vault (skips interactive prompt).      |
 
 \* For endpoints requiring authentication. Can be omitted on clusters with a
 JWT-less `slurmrestd`.
@@ -173,6 +179,28 @@ SLURM_URL=http://localhost:6820 \
 SLURM_JWT=<token> \
 SLURM_USER_NAME=slurm \
 ./srest
+```
+
+#### Encrypted vault
+
+Store credentials in an AES-256-GCM encrypted file so they are never plain text on disk:
+
+```bash
+# Create a new vault (interactive)
+srest vault init
+
+# Run srest (prompts for vault password)
+./srest
+
+# Or skip the prompt with an environment variable
+SREST_VAULT_PASS=myscret ./srest
+```
+
+The vault also supports encrypting an existing plain config file and inspecting vault contents:
+
+```bash
+srest vault encrypt   # Encrypt ~/.srest/config -> ~/.srest/config.vault
+srest vault decrypt   # Display decrypted vault contents
 ```
 
 Press `q` (or `Ctrl+C`) to quit.
