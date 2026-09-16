@@ -3,12 +3,17 @@
 // Precedence is as follows:
 //  1. Environment variables (SLURM_URL, SLURM_JWT, SLURM_USER_NAME,
 //     SLURM_API_VERSION).
-//  2. Default values (URL only).
+//  2. ~/.srest/config.vault (encrypted, prompts for password).
+//  3. Default values (URL only).
 package config
 
 import (
+	"bufio"
+	"fmt"
 	"os"
+	"os/exec"
 	"os/user"
+	"path/filepath"
 	"strings"
 )
 
@@ -42,18 +47,106 @@ type Config struct {
 	CustomHeaders string
 }
 
-// Load reads the configuration from environment variables and applies default
-// values when nothing is defined.
+// Load reads the configuration from environment variables, the encrypted vault,
+// and applies default values when nothing is defined.
 func Load() Config {
-	return Config{
-		URL:           getEnv("SLURM_URL", defaultURL),
-		JWT:           os.Getenv("SLURM_JWT"),
-		Username:      getEnv("SLURM_USER_NAME", currentUser()),
-		APIVersion:    os.Getenv("SLURM_API_VERSION"),
-		Insecure:      os.Getenv("SLURM_INSECURE") == "true",
-		AuthToken:     os.Getenv("SLURM_AUTH_TOKEN"),
-		CustomHeaders: os.Getenv("SLURM_CUSTOM_HEADERS"),
+	cfg := Config{}
+
+	// --- 1. Environment variables (highest priority) ---
+	cfg.URL = getEnv("SLURM_URL", defaultURL)
+	cfg.JWT = os.Getenv("SLURM_JWT")
+	cfg.Username = getEnv("SLURM_USER_NAME", currentUser())
+	cfg.APIVersion = os.Getenv("SLURM_API_VERSION")
+	cfg.Insecure = os.Getenv("SLURM_INSECURE") == "true"
+	cfg.AuthToken = os.Getenv("SLURM_AUTH_TOKEN")
+	cfg.CustomHeaders = os.Getenv("SLURM_CUSTOM_HEADERS")
+
+	// --- 2. Vault file (if JWT not provided via env) ---
+	if cfg.JWT == "" && cfg.AuthToken == "" {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			vaultPath := filepath.Join(home, ".srest", "config.vault")
+			if data, readErr := os.ReadFile(vaultPath); readErr == nil && IsVaultFile(data) {
+				pass := VaultPassword()
+				if pass == "" {
+					pass = promptVaultPassword()
+				}
+				plain, decErr := Decrypt(data, pass)
+				if decErr != nil {
+					fmt.Fprintf(os.Stderr, "srest: vault decrypt: %v\n", decErr)
+				} else {
+					cfg = applyVaultConfig(string(plain), cfg)
+				}
+			}
+		}
 	}
+
+	// --- 3. Defaults ---
+	if cfg.URL == "" {
+		cfg.URL = defaultURL
+	}
+	if cfg.Username == "" {
+		cfg.Username = currentUser()
+	}
+
+	return cfg
+}
+
+// applyVaultConfig parses KEY=VALUE lines from the vault plaintext and applies
+// them to the config (only for fields not already set by env vars).
+func applyVaultConfig(data string, cfg Config) Config {
+	scanner := bufio.NewScanner(strings.NewReader(data))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+
+		switch key {
+		case "SLURM_URL":
+			if cfg.URL == defaultURL {
+				cfg.URL = value
+			}
+		case "SLURM_JWT":
+			if cfg.JWT == "" {
+				cfg.JWT = value
+			}
+		case "SLURM_USER_NAME":
+			if cfg.Username == "" || cfg.Username == currentUser() {
+				cfg.Username = value
+			}
+		}
+	}
+	return cfg
+}
+
+// promptVaultPassword prompts the user for the vault password (hidden input).
+func promptVaultPassword() string {
+	fmt.Fprint(os.Stderr, "Vault password: ")
+
+	// Hide input on Linux/macOS
+	cmd := exec.Command("stty", "-echo")
+	cmd.Stdin = os.Stdin
+	if err := cmd.Run(); err == nil {
+		defer func() {
+			cmd = exec.Command("stty", "echo")
+			cmd.Stdin = os.Stdin
+			_ = cmd.Run()
+		}()
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(line)
 }
 
 // ParseCustomHeaders parses the SLURM_CUSTOM_HEADERS env var into a map.

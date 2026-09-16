@@ -303,6 +303,7 @@
                 <span class="badge badge-hpc">slurmrestd</span>
                 <span class="badge badge-hpc">v0.0.40–45</span>
                 <span class="badge badge-api">JWT</span>
+                <span class="badge badge-tui">AES-256 Vault</span>
             </div>
             <div class="hero-terminal" aria-label="Live terminal output from srest" id="hero-terminal">
                 <span id="terminal-text">$ go build -o srest .</span><span class="cursor" id="terminal-cursor"></span>
@@ -346,6 +347,11 @@
                         <div class="icon" role="img" aria-label="search icon">🔍</div>
                         <h3>Table search</h3>
                         <p>Filter jobs, nodes and partitions instantly with a live search box.</p>
+                    </article>
+                    <article class="feature">
+                        <div class="icon" role="img" aria-label="shield icon">🔐</div>
+                        <h3>Encrypted vault</h3>
+                        <p>Store JWT and connection settings in an AES-256-GCM encrypted file — credentials never sit plain on disk.</p>
                     </article>
                 </div>
             </section>
@@ -392,8 +398,11 @@
                     <div class="step">
                         <div class="step-content">
                             <h3>Configure</h3>
-                            <p>Point it at your slurmrestd and authenticate with a JWT</p>
+                            <p>Store credentials in an encrypted vault or export env vars</p>
                             <div class="code-block">
+                                <span class="comment"># Option A: encrypted vault (recommended)</span><br>
+                                <span class="cmd">srest vault init</span><br><br>
+                                <span class="comment"># Option B: environment variables</span><br>
                                 <span class="comment">export SLURM_URL=http://localhost:6820</span><br>
                                 <span class="comment">export SLURM_JWT=$(scontrol token | cut -d= -f2)</span>
                                 <button class="copy-btn" onclick="copyCmd(this)"><svg class="clip" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#7C8791" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><svg class="check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#EFB72B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>
@@ -423,6 +432,10 @@
                     <details>
                         <summary>Which Slurm API versions are supported?</summary>
                         <p>srest auto-detects the <code>data_parser</code> version served by the cluster (v0.0.40 through v0.0.45) and version-gates request fields so it does not send parameters the version does not support.</p>
+                    </details>
+                    <details>
+                        <summary>How does the encrypted vault work?</summary>
+                        <p>srest can store your JWT and connection settings in an AES-256-GCM encrypted file at <code>~/.srest/config.vault</code>. Run <code>srest vault init</code> to create it. The vault is protected by a password you choose; set <code>SREST_VAULT_PASS</code> to skip the interactive prompt.</p>
                     </details>
                 </div>
             </section>

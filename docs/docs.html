@@ -149,6 +149,7 @@
             <a href="#requirements">Requirements</a>
             <a href="#installation">Installation</a>
             <a href="#configuration">Configuration</a>
+            <a href="#vault">Encrypted Vault</a>
             <a href="#usage">Usage &amp; key bindings</a>
             <a href="#features">Features</a>
             <a href="#test-lab">Test Lab</a>
@@ -189,13 +190,16 @@
 
             <section class="doc" id="configuration" aria-labelledby="configuration">
                 <h2>Configuration</h2>
-                <p>srest is configured through environment variables:</p>
+                <p>srest is configured through environment variables or an encrypted vault file.</p>
+                <p><strong>Priority:</strong> Environment variables &gt; Encrypted vault (<code>~/.srest/config.vault</code>) &gt; Defaults.</p>
+                <h3>Environment variables</h3>
                 <table>
                     <tr><th>Variable</th><th>Required</th><th>Description</th></tr>
                     <tr><td><code>SLURM_URL</code></td><td>No</td><td>Base URL of slurmrestd (default <code>http://localhost:6820</code>).</td></tr>
                     <tr><td><code>SLURM_JWT</code></td><td>Yes*</td><td>JWT token for the <code>X-SLURM-USER-TOKEN</code> header.</td></tr>
                     <tr><td><code>SLURM_USER_NAME</code></td><td>No</td><td>User for <code>X-SLURM-USER-NAME</code> (defaults to the current OS user).</td></tr>
                     <tr><td><code>SLURM_API_VERSION</code></td><td>No</td><td>API version (e.g. <code>v0.0.45</code>). If omitted, it is auto-detected.</td></tr>
+                    <tr><td><code>SREST_VAULT_PASS</code></td><td>No</td><td>Password to auto-decrypt the vault (skips interactive prompt).</td></tr>
                 </table>
                 <p class="note"><strong>Note:</strong> * Required for endpoints that need authentication; can be omitted on a JWT-less slurmrestd.</p>
                 <div class="code-block">
@@ -205,6 +209,43 @@
                     <span class="cmd">./srest</span>
                     <button class="copy-btn" onclick="copyCmd(this)"><svg class="clip" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#7C8791" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><svg class="check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#EFB72B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>
                 </div>
+            </section>
+
+            <section class="doc" id="vault" aria-labelledby="vault">
+                <h2>Encrypted Vault</h2>
+                <p>srest can store your JWT and connection settings in an AES-256-GCM encrypted file at <code>~/.srest/config.vault</code>. The vault is protected by a password you choose at creation time.</p>
+
+                <h3>Create a vault</h3>
+                <div class="code-block">
+                    <span class="cmd">srest vault init</span><br>
+                    <span class="comment"># Prompts for: vault password, Slurm URL, JWT token, username</span>
+                    <button class="copy-btn" onclick="copyCmd(this)"><svg class="clip" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#7C8791" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><svg class="check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#EFB72B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>
+                </div>
+
+                <h3>Run with vault</h3>
+                <div class="code-block">
+                    <span class="comment"># Interactive password prompt</span><br>
+                    <span class="cmd">./srest</span><br><br>
+                    <span class="comment"># Or skip the prompt with an environment variable</span><br>
+                    <span class="cmd">SREST_VAULT_PASS=myscret ./srest</span>
+                    <button class="copy-btn" onclick="copyCmd(this)"><svg class="clip" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#7C8791" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><svg class="check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#EFB72B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>
+                </div>
+
+                <h3>Vault commands</h3>
+                <table>
+                    <tr><th>Command</th><th>Description</th></tr>
+                    <tr><td><code>srest vault init</code></td><td>Create a new encrypted vault with interactive prompts.</td></tr>
+                    <tr><td><code>srest vault encrypt</code></td><td>Encrypt an existing plain <code>~/.srest/config</code> file into a vault.</td></tr>
+                    <tr><td><code>srest vault decrypt</code></td><td>Decrypt and display the vault contents (for inspection).</td></tr>
+                </table>
+
+                <h3>How it works</h3>
+                <ul>
+                    <li><strong>Encryption:</strong> AES-256-GCM with a PBKDF2-derived key (100,000 iterations, SHA-256).</li>
+                    <li><strong>File format:</strong> <code>SREST_VAULT_V1</code> magic header + 16-byte salt + 12-byte IV + ciphertext.</li>
+                    <li><strong>Vault path:</strong> <code>~/.srest/config.vault</code> (permissions <code>0600</code>).</li>
+                    <li><strong>Priority:</strong> Environment variables always override vault values.</li>
+                </ul>
             </section>
 
             <section class="doc" id="usage" aria-labelledby="usage">
@@ -266,6 +307,7 @@
             <section class="doc" id="features" aria-labelledby="features">
                 <h2>Features</h2>
                 <ul>
+                    <li><strong>Encrypted vault</strong> — store JWT and connection settings in an AES-256-GCM encrypted file (<code>~/.srest/config.vault</code>); credentials never sit plain on disk.</li>
                     <li><strong>Dashboard</strong> — real cluster overview: nodes up/down, jobs by state, partitions and accounts.</li>
                     <li><strong>Jobs</strong> — your jobs (filtered by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code).</li>
                     <li><strong>Nodes</strong> — cluster nodes with state, CPUs and memory; select a node for details.</li>
