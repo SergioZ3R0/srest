@@ -54,50 +54,6 @@ This makes srest:
 If a feature isn't exposed by the Slurm REST API, srest doesn't attempt to
 work around it. What you see is exactly what `slurmrestd` provides.
 
-## Features
-
-- **Encrypted credential vault** — AES-256-GCM encrypted config file (`~/.srest/config.vault`) with PBKDF2 key derivation.
-- **JWT authentication** — `X-SLURM-USER-TOKEN` and `X-SLURM-USER-NAME` headers, plus Bearer token support for proxy setups.
-- **Auto-detection** — discovers the `slurmrestd` data_parser version (v0.0.40–v0.0.45) or accepts a pinned version.
-- **Version-gating** — adapts request fields to the detected API version; surfaces warnings and errors from slurmrestd.
-- **Dashboard** — real-time cluster overview: nodes up/down, jobs by state, partitions and accounts.
-- **Jobs, Nodes, Partitions** — live tables with detail panels, search/filter (`/`), and CSV export.
-- **Job actions** — cancel (`x`) and requeue (`r`) jobs directly from the TUI.
-- **Query builder** — visual request composer for ping, get jobs, and submit jobs with cluster-gathered options (state, account, partition, qos, gres).
-- **Custom query** — write or paste any request path and run it directly.
-- **Request history** — every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
-
-### Tabs
-
-- **Dashboard** — real cluster overview: nodes up/down, jobs running/pending/completed/failed, partitions and accounts.
-- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Cancel (`x`) and requeue (`r`) jobs directly from the TUI. Press `enter` in Partitions to view jobs by partition.
-- **Nodes** — cluster nodes with state, CPUs, memory and partitions; select a node to see its detail.
-- **Partitions** — partition list with configured/total nodes and max wall time. Press `enter` to filter jobs by partition.
-- **Query** — a request composer with three user-focused endpoints:
-  - **ping** — connectivity check.
-  - **get jobs** — query with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.
-  - **submit jobs** — submit a job with name, partition, qos, account, gres, wall time, nodes, cpus/task, memory, script. Partition, account, qos, and gres options are gathered from the cluster. Press `e` to open `$EDITOR`.
-  - **Custom query** panel: type or paste any request path to run it directly.
-  - **Request history** — every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
-
-**Key bindings**
-
-| Key | Action |
-| --- | ------ |
-| `q` / `Ctrl+C` | quit |
-| `tab` / `]`, `shift+tab` / `[` | next / previous tab |
-| `esc` | go to Dashboard |
-| `↑/↓` / `j/k` | navigate table rows |
-| `PgUp/PgDn` / `b/f` | page up / page down |
-| `Ctrl+U/Ctrl+D` | half page up / down |
-| `Home/End` / `g/G` | go to start / end |
-| `enter` | select / drill-down |
-| `/` | filter the current table |
-| `F5` | refresh (Jobs, Nodes, Partitions) |
-| `x` | cancel selected job (Jobs tab) |
-| `r` | requeue selected job (Jobs tab) |
-| `?` | toggle help |
-
 ## Stack
 
 - **Language:** Go 1.24+
@@ -200,6 +156,50 @@ srest vault decrypt   # Display decrypted vault contents
 ```
 
 Press `q` (or `Ctrl+C`) to quit.
+
+## Features
+
+- **Encrypted credential vault** — AES-256-GCM encrypted config file (`~/.srest/config.vault`) with PBKDF2 key derivation.
+- **JWT authentication** — `X-SLURM-USER-TOKEN` and `X-SLURM-USER-NAME` headers, plus Bearer token support for proxy setups.
+- **Auto-detection** — discovers the `slurmrestd` data_parser version (v0.0.40–v0.0.45) or accepts a pinned version.
+- **Version-gating** — adapts request fields to the detected API version; surfaces warnings and errors from slurmrestd.
+- **Dashboard** — real-time cluster overview: nodes up/down, jobs by state, partitions and accounts.
+- **Jobs, Nodes, Partitions** — live tables with detail panels, search/filter (`/`), and CSV export.
+- **Job actions** — cancel (`x`) and requeue (`r`) jobs directly from the TUI.
+- **Query builder** — visual request composer for ping, get jobs, and submit jobs with cluster-gathered options (state, account, partition, qos, gres).
+- **Custom query** — write or paste any request path and run it directly.
+- **Request history** — every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
+
+### Tabs
+
+- **Dashboard** — real cluster overview: nodes up/down, jobs running/pending/completed/failed, partitions and accounts.
+- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Cancel (`x`) and requeue (`r`) jobs directly from the TUI. Press `enter` in Partitions to view jobs by partition.
+- **Nodes** — cluster nodes with state, CPUs, memory and partitions; select a node to see its detail.
+- **Partitions** — partition list with configured/total nodes and max wall time. Press `enter` to filter jobs by partition.
+- **Query** — a request composer with three user-focused endpoints:
+  - **ping** — connectivity check.
+  - **get jobs** — query with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.
+  - **submit jobs** — submit a job with name, partition, qos, account, gres, wall time, nodes, cpus/task, memory, script. Partition, account, qos, and gres options are gathered from the cluster. Press `e` to open `$EDITOR`.
+  - **Custom query** panel: type or paste any request path to run it directly.
+  - **Request history** — every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
+
+**Key bindings**
+
+| Key | Action |
+| --- | ------ |
+| `q` / `Ctrl+C` | quit |
+| `tab` / `]`, `shift+tab` / `[` | next / previous tab |
+| `esc` | go to Dashboard |
+| `↑/↓` / `j/k` | navigate table rows |
+| `PgUp/PgDn` / `b/f` | page up / page down |
+| `Ctrl+U/Ctrl+D` | half page up / down |
+| `Home/End` / `g/G` | go to start / end |
+| `enter` | select / drill-down |
+| `/` | filter the current table |
+| `F5` | refresh (Jobs, Nodes, Partitions) |
+| `x` | cancel selected job (Jobs tab) |
+| `r` | requeue selected job (Jobs tab) |
+| `?` | toggle help |
 
 ## Test Lab
 
