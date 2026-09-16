@@ -69,14 +69,14 @@ work around it. What you see is exactly what `slurmrestd` provides.
 - [x] Custom query panel for writing/pasting any request path.
 - [x] Job submission with script path, $EDITOR support, and gathered partition/account/qos/gres options.
 - [x] Persistent request history (saved to `~/.local/share/srest/history.json`, max 100 entries).
-- [ ] Job cancellation and requeue.
+- [x] Job cancellation and requeue.
 
 ## Features
 
 **Tabs** (navigate with `tab`/`shift+tab` or `[`/`]`, `esc` returns to Dashboard):
 
 - **Dashboard** — real cluster overview: nodes up/down, jobs running/pending/completed/failed, partitions and accounts.
-- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Press `enter` in Partitions to view jobs by partition.
+- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Cancel (`x`) and requeue (`r`) jobs directly from the TUI. Press `enter` in Partitions to view jobs by partition.
 - **Nodes** — cluster nodes with state, CPUs, memory and partitions; select a node to see its detail.
 - **Partitions** — partition list with configured/total nodes and max wall time. Press `enter` to filter jobs by partition.
 - **Query** — a request composer with three user-focused endpoints:
@@ -99,7 +99,9 @@ work around it. What you see is exactly what `slurmrestd` provides.
 | `Home/End` / `g/G` | go to start / end |
 | `enter` | select / drill-down |
 | `/` | filter the current table |
-| `r` | refresh (Jobs, Nodes, Partitions) |
+| `F5` | refresh (Jobs, Nodes, Partitions) |
+| `x` | cancel selected job (Jobs tab) |
+| `r` | requeue selected job (Jobs tab) |
 | `?` | toggle help |
 
 ## Stack
