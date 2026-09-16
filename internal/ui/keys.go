@@ -9,25 +9,25 @@ import (
 
 // keyMap defines the key bindings for srest's UI.
 type keyMap struct {
-	Quit     key.Binding
-	NextTab  key.Binding
-	PrevTab  key.Binding
-	Home     key.Binding
-	Help     key.Binding
-	Export   key.Binding
-	Up       key.Binding
-	Down     key.Binding
-	PageUp   key.Binding
-	PageDn   key.Binding
-	HalfUp   key.Binding
-	HalfDn   key.Binding
-	GoTop    key.Binding
-	GoBot    key.Binding
-	Select   key.Binding
-	Filter   key.Binding
-	Refresh  key.Binding
-	Cancel   key.Binding
-	Requeue  key.Binding
+	Quit    key.Binding
+	NextTab key.Binding
+	PrevTab key.Binding
+	Home    key.Binding
+	Help    key.Binding
+	Export  key.Binding
+	Up      key.Binding
+	Down    key.Binding
+	PageUp  key.Binding
+	PageDn  key.Binding
+	HalfUp  key.Binding
+	HalfDn  key.Binding
+	GoTop   key.Binding
+	GoBot   key.Binding
+	Select  key.Binding
+	Filter  key.Binding
+	Refresh key.Binding
+	Cancel  key.Binding
+	Requeue key.Binding
 }
 
 // ShortHelp returns the bindings shown in the footer by default.
