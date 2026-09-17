@@ -66,10 +66,11 @@ func New(baseURL, jwt, username string, insecure bool, caCert string, authToken 
 			tlsCfg.InsecureSkipVerify = true //nolint:gosec
 		}
 		if caCert != "" {
-			if ca, err := os.ReadFile(caCert); err == nil {
-				pool := x509.NewCertPool()
-				pool.AppendCertsFromPEM(ca)
-				tlsCfg.RootCAs = pool
+			if pool, err := x509.SystemCertPool(); err == nil {
+				if ca, err := os.ReadFile(caCert); err == nil {
+					pool.AppendCertsFromPEM(ca)
+					tlsCfg.RootCAs = pool
+				}
 			}
 		}
 		transport.TLSClientConfig = tlsCfg
