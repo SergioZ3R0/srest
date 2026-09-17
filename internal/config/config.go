@@ -38,6 +38,10 @@ type Config struct {
 	// Insecure skips TLS certificate verification when true.
 	Insecure bool
 
+	// CACert is the path to a PEM-encoded CA certificate file for custom
+	// or self-signed TLS endpoints. When empty, the system trust store is used.
+	CACert string
+
 	// AuthToken is a bearer token sent in the Authorization header. When set,
 	// it replaces the default X-SLURM-USER-TOKEN header (for proxy setups).
 	AuthToken string
@@ -58,6 +62,7 @@ func Load() Config {
 	cfg.Username = getEnv("SLURM_USER_NAME", currentUser())
 	cfg.APIVersion = os.Getenv("SLURM_API_VERSION")
 	cfg.Insecure = os.Getenv("SLURM_INSECURE") == "true"
+	cfg.CACert = os.Getenv("SLURM_CA_CERT")
 	cfg.AuthToken = os.Getenv("SLURM_AUTH_TOKEN")
 	cfg.CustomHeaders = os.Getenv("SLURM_CUSTOM_HEADERS")
 

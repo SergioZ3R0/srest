@@ -23,7 +23,7 @@ func main() {
 
 	cfg := config.Load()
 
-	client := api.New(cfg.URL, cfg.JWT, cfg.Username, cfg.Insecure, cfg.AuthToken, cfg.ParseCustomHeaders())
+	client := api.New(cfg.URL, cfg.JWT, cfg.Username, cfg.Insecure, cfg.CACert, cfg.AuthToken, cfg.ParseCustomHeaders())
 
 	// If the user pinned an explicit version, use it; otherwise the UI will
 	// auto-detect it.

@@ -201,6 +201,8 @@
                     <tr><td><code>SLURM_JWT</code></td><td>Yes*</td><td>JWT token for the <code>X-SLURM-USER-TOKEN</code> header.</td></tr>
                     <tr><td><code>SLURM_USER_NAME</code></td><td>No</td><td>User for <code>X-SLURM-USER-NAME</code> (defaults to the current OS user).</td></tr>
                     <tr><td><code>SLURM_API_VERSION</code></td><td>No</td><td>API version (e.g. <code>v0.0.45</code>). If omitted, it is auto-detected.</td></tr>
+                    <tr><td><code>SLURM_INSECURE</code></td><td>No</td><td>Set to <code>true</code> to skip TLS certificate verification.</td></tr>
+                    <tr><td><code>SLURM_CA_CERT</code></td><td>No</td><td>Path to a PEM-encoded CA certificate for custom/self-signed TLS endpoints.</td></tr>
                     <tr><td><code>SREST_VAULT_PASS</code></td><td>No</td><td>Password to auto-decrypt the vault (skips interactive prompt).</td></tr>
                 </table>
                 <p class="note"><strong>Note:</strong> * Required for endpoints that need authentication; can be omitted on a JWT-less slurmrestd.</p>

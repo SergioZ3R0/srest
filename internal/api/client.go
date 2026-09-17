@@ -11,11 +11,13 @@ package api
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -56,10 +58,21 @@ type Client struct {
 }
 
 // New creates a new API client with the given configuration.
-func New(baseURL, jwt, username string, insecure bool, authToken string, customHeaders map[string]string) *Client {
+func New(baseURL, jwt, username string, insecure bool, caCert string, authToken string, customHeaders map[string]string) *Client {
 	transport := &http.Transport{}
-	if insecure {
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+	if insecure || caCert != "" {
+		tlsCfg := &tls.Config{}
+		if insecure {
+			tlsCfg.InsecureSkipVerify = true //nolint:gosec
+		}
+		if caCert != "" {
+			if ca, err := os.ReadFile(caCert); err == nil {
+				pool := x509.NewCertPool()
+				pool.AppendCertsFromPEM(ca)
+				tlsCfg.RootCAs = pool
+			}
+		}
+		transport.TLSClientConfig = tlsCfg
 	}
 	return &Client{
 		baseURL:       baseURL,
