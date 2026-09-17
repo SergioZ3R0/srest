@@ -82,80 +82,56 @@ Follows the standard Go layout with a strict separation of responsibilities:
 
 - Go 1.24+ (to build from source).
 
-## Installation and usage
+## Quick Start
 
-### Pre-built binaries
+### Download
 
-Download the zip for your platform from [GitHub Releases](https://github.com/SergioZ3R0/srest/releases) and extract it — no Go installation required:
-
-**Linux / macOS:**
 ```bash
+curl -LO https://github.com/SergioZ3R0/srest/releases/latest/download/srest-linux-amd64.zip
 unzip srest-linux-amd64.zip
 chmod +x srest
-./srest
 ```
 
-**Windows:**
-```
-unzip srest-windows-amd64.zip
-srest.exe
-```
+### Configure
 
-### From source
-
-```bash
-go build -o srest .
-```
-
-### Configuration
-
-`srest` is configured through environment variables or an encrypted vault file.
-
-**Priority:** Environment variables > Encrypted vault (`~/.srest/config.vault`) > Defaults.
-
-#### Environment variables
-
-| Variable            | Required | Description                                                        |
-| ------------------- | -------- | ------------------------------------------------------------------ |
-| `SLURM_URL`         | No       | Base URL of `slurmrestd`. Defaults to `http://localhost:6820`.     |
-| `SLURM_JWT`         | Yes*     | JWT token for the `X-SLURM-USER-TOKEN` header.                     |
-| `SLURM_USER_NAME`   | No       | User for `X-SLURM-USER-NAME`. Defaults to the current OS user.     |
-| `SLURM_API_VERSION` | No       | API version to use (e.g. `v0.0.45`). If omitted, it is auto-detected. |
-| `SREST_VAULT_PASS`  | No       | Password to auto-decrypt the vault (skips interactive prompt).      |
-
-\* For endpoints requiring authentication. Can be omitted on clusters with a
-JWT-less `slurmrestd`.
+Point it at your `slurmrestd` and authenticate with a JWT:
 
 ```bash
 SLURM_URL=http://localhost:6820 \
-SLURM_JWT=<token> \
-SLURM_USER_NAME=slurm \
+SLURM_JWT=$(scontrol token | cut -d= -f2) \
 ./srest
 ```
 
-#### Encrypted vault
+### Encrypted vault (recommended)
 
-Store credentials in an AES-256-GCM encrypted file so they are never plain text on disk:
+Store credentials encrypted with AES-256-GCM:
 
 ```bash
-# Create a new vault (interactive)
+# Create encrypted vault
 srest vault init
 
-# Run srest (prompts for vault password)
+# Run (prompts for vault password)
 ./srest
 
-# Or skip the prompt with an environment variable
+# Or skip vault prompt with env var
 SREST_VAULT_PASS=myscret ./srest
 ```
 
-The vault also supports encrypting an existing plain config file and inspecting vault contents:
+Vault commands:
+
+| Command | Description |
+|---------|-------------|
+| `srest vault init` | Create new encrypted config |
+| `srest vault encrypt` | Encrypt existing plain config |
+| `srest vault decrypt` | Decrypt and display contents |
+
+Vault password can be set via `SREST_VAULT_PASS` env var to skip the prompt.
+
+### Run
 
 ```bash
-srest vault encrypt   # Encrypt ~/.srest/config -> ~/.srest/config.vault
-srest vault decrypt   # Display decrypted vault contents
+./srest
 ```
-
-Press `q` (or `Ctrl+C`) to quit.
 
 ## Features
 
