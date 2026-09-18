@@ -15,6 +15,9 @@ import (
 	"github.com/SergioZ3R0/srest/internal/ui"
 )
 
+// Version is set at build time via -ldflags.
+var Version = "dev"
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "vault" {
 		handleVault(os.Args[2:])
@@ -37,7 +40,7 @@ func main() {
 	}
 
 	program := tea.NewProgram(
-		ui.New(client),
+		ui.New(client, Version),
 		tea.WithAltScreen(),
 	)
 

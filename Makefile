@@ -1,5 +1,6 @@
 BINARY := srest
 PREFIX ?= $(HOME)/.local/bin
+VERSION ?= dev
 
 .PHONY: help build install run test vet lint fmt clean
 
@@ -8,7 +9,7 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
 build: ## Build the binary into the current directory
-	go build -o $(BINARY) .
+	go build -ldflags "-X main.Version=$(VERSION)" -o $(BINARY) .
 
 install: build ## Build and install (make install PREFIX=/usr/local/bin)
 	install -d $(PREFIX)

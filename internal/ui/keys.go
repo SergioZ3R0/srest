@@ -68,6 +68,7 @@ func (k keyMap) helpView() string {
 	lines = append(lines, title.Render("Global"))
 	lines = append(lines, "  "+section.Render("Tabs")+":     "+row(k.NextTab, k.PrevTab, k.Home, k.Quit))
 	lines = append(lines, "  "+section.Render("Help")+":      "+renderKey(k.Help, dim))
+	lines = append(lines, "  "+dim.Render("a")+"           about srest")
 	lines = append(lines, "")
 	lines = append(lines, title.Render("Tables (Jobs / Nodes / Partitions)"))
 	lines = append(lines, "  "+section.Render("Move")+":      "+row(k.Up, k.Down, k.PageUp, k.PageDn))

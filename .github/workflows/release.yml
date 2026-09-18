@@ -52,7 +52,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: '0'
         run: |
-          go build -o srest${{ matrix.suffix }} .
+          go build -ldflags "-X main.Version=${GITHUB_REF#refs/tags/}" -o srest${{ matrix.suffix }} .
           zip "srest-${{ matrix.goos }}-${{ matrix.goarch }}.zip" srest${{ matrix.suffix }} LICENSE
           echo "ARTIFACT=srest-${{ matrix.goos }}-${{ matrix.goarch }}.zip" >> $GITHUB_ENV
 

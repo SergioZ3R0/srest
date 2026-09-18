@@ -11,7 +11,7 @@ import (
 )
 
 func TestModelViewSuccess(t *testing.T) {
-	m := New(nil)
+	m := New(nil, "test")
 
 	updated, _ := m.Update(statusMsg{
 		info: api.PingInfo{
@@ -42,7 +42,7 @@ func TestModelViewSuccess(t *testing.T) {
 }
 
 func TestModelViewError(t *testing.T) {
-	m := New(nil)
+	m := New(nil, "test")
 
 	updated, _ := m.Update(statusMsg{err: errors.New("boom")})
 	m = updated.(Model)
@@ -56,7 +56,7 @@ func TestModelViewError(t *testing.T) {
 }
 
 func TestModelQuit(t *testing.T) {
-	m := New(nil)
+	m := New(nil, "test")
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	if cmd == nil {
 		t.Fatal("expected a quit command")

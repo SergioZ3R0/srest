@@ -35,6 +35,10 @@ type Model struct {
 	release  string
 	warnings []api.Warning
 
+	// App state.
+	appVersion string
+	showAbout  bool
+
 	// UI state.
 	tabs           []string
 	active         int
@@ -64,7 +68,7 @@ type Model struct {
 }
 
 // New returns a Model ready to be used with an API client.
-func New(client *api.Client) Model {
+func New(client *api.Client, appVersion string) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
@@ -87,6 +91,7 @@ func New(client *api.Client) Model {
 	return Model{
 		client:     client,
 		status:     "Connecting to Slurm...",
+		appVersion: appVersion,
 		tabs:       []string{"Dashboard", "Jobs", "Nodes", "Partitions", "Query"},
 		active:     0,
 		jobs:       newJobsTable(),
@@ -690,6 +695,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
+		case msg.String() == "a":
+			m.showAbout = !m.showAbout
+			return m, nil
+		}
+
+		// About modal: esc closes it.
+		if m.showAbout {
+			if msg.String() == "esc" {
+				m.showAbout = false
+				return m, nil
+			}
+			return m, nil
 		}
 
 		// While editing a value in the Query builder, only the composer
@@ -1110,6 +1127,57 @@ func (m Model) dashboardView(width int) string {
 	return lipgloss.JoinVertical(lipgloss.Left, title, lipgloss.JoinHorizontal(lipgloss.Top, cards...), stats)
 }
 
+// aboutModal renders the About modal overlay.
+func (m Model) aboutModal() string {
+	banner := `  ___ _ __ ___  ___| |_
+ / __| '__/ _ \/ __| __|
+ \__ \ | |  __/\__ \ |_
+ |___/_|  \___||___/\__|`
+
+	inner := m.innerWidth() - 8
+	if inner < 40 {
+		inner = 40
+	}
+
+	logoStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("12")).
+		Bold(true)
+	versionStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("10")).
+		Bold(true)
+	linkStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("12")).
+		Underline(true)
+	dimStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("8"))
+
+	lines := []string{
+		logoStyle.Render(banner),
+		"",
+		versionStyle.Render("v"+m.appVersion) + dimStyle.Render("  —  TUI for the Slurm REST API"),
+		"",
+		lipgloss.NewStyle().Width(inner).Render(dimStyle.Render(strings.Repeat("─", inner))),
+		"",
+		linkStyle.Render("GitHub") + dimStyle.Render("  •  ") +
+			linkStyle.Render("Docs") + dimStyle.Render("  •  ") +
+			linkStyle.Render("Issues") + dimStyle.Render("  •  ") +
+			linkStyle.Render("Releases"),
+		"",
+		dimStyle.Render("press esc to close"),
+	}
+
+	content := lipgloss.JoinVertical(lipgloss.Left, lines...)
+
+	modal := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("12")).
+		Padding(1, 3).
+		Width(inner + 8).
+		Render("About srest" + "\n\n" + content)
+
+	return modal
+}
+
 // nodesView renders the Nodes tab: table on the left, selected node detail on
 // the right.
 func (m Model) nodesView(width int) string {
@@ -1263,6 +1331,12 @@ func (m Model) View() string {
 
 	block := lipgloss.JoinVertical(lipgloss.Left, lines...)
 	framed := frameStyle.Render(block)
+
+	// About modal overlay.
+	if m.showAbout {
+		about := m.aboutModal()
+		return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, about)
+	}
 
 	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, framed)
 }
