@@ -81,7 +81,7 @@ func (k keyMap) helpView() string {
 	lines = append(lines, "")
 	lines = append(lines, title.Render("Query tab"))
 	lines = append(lines, "  "+dim.Render("f")+"           cycle panels (Builder / Response / History / Raw)")
-	lines = append(lines, "  "+dim.Render("F5")+"          run request")
+	lines = append(lines, "  "+dim.Render("r")+"           run request")
 	lines = append(lines, "  "+dim.Render("1 / 2 / 3")+"    select endpoint (ping / get jobs / submit)")
 	lines = append(lines, "  "+dim.Render("↑/k  ↓/j")+"    move cursor in builder")
 	lines = append(lines, "  "+dim.Render("←/h  →/l")+"    cycle parameter options")
@@ -164,8 +164,8 @@ var keys = keyMap{
 		key.WithHelp("e", "export CSV"),
 	),
 	Refresh: key.NewBinding(
-		key.WithKeys("f5"),
-		key.WithHelp("F5", "refresh"),
+		key.WithKeys("ctrl+r"),
+		key.WithHelp("ctrl+r", "refresh"),
 	),
 	Cancel: key.NewBinding(
 		key.WithKeys("x"),

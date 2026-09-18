@@ -735,7 +735,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.startSearch()
 				return m, nil
 			}
-			if msg.String() == "f5" {
+			if msg.String() == "ctrl+r" {
 				return m, jobsCmd(m.client)
 			}
 			if msg.String() == "x" {
@@ -771,7 +771,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.startSearch()
 				return m, nil
 			}
-			if msg.String() == "f5" {
+			if msg.String() == "ctrl+r" {
 				return m, nodesCmd(m.client)
 			}
 			if msg.String() == "e" {
@@ -791,7 +791,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.startSearch()
 				return m, nil
 			}
-			if msg.String() == "f5" {
+			if msg.String() == "ctrl+r" {
 				return m, tea.Batch(partitionsCmd(m.client), nodesCmd(m.client))
 			}
 			if msg.String() == "enter" {
@@ -919,7 +919,7 @@ func rawRunCmd(c *api.Client, path string) tea.Cmd {
 }
 
 // handleQueryTabKey routes keys within the Query tab based on the focused
-// panel. 'f' cycles focus; 'F5' runs the built request from anywhere.
+// panel. 'f' cycles focus; 'r' runs the built request from anywhere.
 func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "f":
@@ -930,7 +930,7 @@ func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.rawInput.Blur()
 		}
 		return m, nil
-	case "f5":
+	case "r":
 		return m, m.composer.run(m.client)
 	}
 
@@ -1121,7 +1121,7 @@ func (m Model) nodesView(width int) string {
 	detailW := panel - tableW
 
 	tablePanel := composerPanelStyle.Width(tableW).Render(
-		panelTitleStyle.Render("Nodes (/ search · F5 refresh)") + "\n" + m.searchBar() + m.nodes.View(),
+		panelTitleStyle.Render("Nodes (/ search · ctrl+r refresh)") + "\n" + m.searchBar() + m.nodes.View(),
 	)
 	detail := m.nodeDetailView()
 	detailPanel := outputPanelStyle.Width(detailW).Render(
@@ -1179,7 +1179,7 @@ func (m Model) partitionsView(width int) string {
 	detailW := panel - tableW
 
 	tablePanel := composerPanelStyle.Width(tableW).Render(
-		panelTitleStyle.Render("Partitions (/ search · F5 refresh · j: jobs)") + "\n" + m.searchBar() + m.partitions.View(),
+		panelTitleStyle.Render("Partitions (/ search · ctrl+r refresh · j: jobs)") + "\n" + m.searchBar() + m.partitions.View(),
 	)
 	idx := m.partitions.Cursor()
 	detail := detailStyle.Render("Select a partition to see its details.")
@@ -1219,7 +1219,7 @@ func (m Model) jobsView(width int) string {
 	detailW := panel - tableW
 
 	tablePanel := composerPanelStyle.Width(tableW).Render(
-		panelTitleStyle.Render("Jobs (/ search · F5 refresh · x cancel · r requeue)") + "\n" + m.searchBar() + m.jobs.View(),
+		panelTitleStyle.Render("Jobs (/ search · ctrl+r refresh · x cancel · r requeue)") + "\n" + m.searchBar() + m.jobs.View(),
 	)
 	detailPanel := outputPanelStyle.Width(detailW).Render(
 		panelTitleStyle.Render("Job detail") + "\n" + m.jobDetailVP.View(),
