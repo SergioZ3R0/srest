@@ -1205,13 +1205,16 @@ func (m Model) aboutModal() string {
 
 	var linkParts []string
 	for i, l := range links {
+		if i > 0 {
+			linkParts = append(linkParts, dimStyle.Render("  •  "))
+		}
 		if i == m.aboutCursor {
 			linkParts = append(linkParts, linkActive.Render(l))
 		} else {
 			linkParts = append(linkParts, linkInactive.Render(l))
 		}
 	}
-	linkBar := lipgloss.JoinHorizontal(lipgloss.Top, linkParts...)
+	linkBar := strings.Join(linkParts, "")
 
 	lines := []string{
 		logoStyle.Render(banner),
