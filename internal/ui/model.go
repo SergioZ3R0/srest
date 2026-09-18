@@ -7,6 +7,8 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -36,8 +38,9 @@ type Model struct {
 	warnings []api.Warning
 
 	// App state.
-	appVersion string
-	showAbout  bool
+	appVersion  string
+	showAbout   bool
+	aboutCursor int
 
 	// UI state.
 	tabs           []string
@@ -388,6 +391,23 @@ func cancelJobCmd(c *api.Client, id uint32) tea.Cmd {
 	}
 }
 
+// openURLCmd opens a URL in the default browser.
+func openURLCmd(url string) tea.Cmd {
+	return func() tea.Msg {
+		var cmd *exec.Cmd
+		switch runtime.GOOS {
+		case "darwin":
+			cmd = exec.Command("open", url)
+		case "windows":
+			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+		default:
+			cmd = exec.Command("xdg-open", url)
+		}
+		_ = cmd.Start()
+		return nil
+	}
+}
+
 // requeueJobCmd sends a requeue request for the given job.
 func requeueJobCmd(c *api.Client, id uint32) tea.Cmd {
 	return func() tea.Msg {
@@ -700,11 +720,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// About modal: esc closes it.
+		// About modal: esc closes, arrows navigate, enter opens.
 		if m.showAbout {
-			if msg.String() == "esc" {
+			switch msg.String() {
+			case "esc":
 				m.showAbout = false
 				return m, nil
+			case "left", "h":
+				m.aboutCursor--
+				if m.aboutCursor < 0 {
+					m.aboutCursor = 3
+				}
+				return m, nil
+			case "right", "l":
+				m.aboutCursor++
+				if m.aboutCursor > 3 {
+					m.aboutCursor = 0
+				}
+				return m, nil
+			case "enter":
+				urls := []string{
+					"https://github.com/SergioZ3R0/srest",
+					"https://srest.scszero.com/docs.html",
+					"https://github.com/SergioZ3R0/srest/issues",
+					"https://github.com/SergioZ3R0/srest/releases",
+				}
+				if m.aboutCursor >= 0 && m.aboutCursor < len(urls) {
+					return m, openURLCmd(urls[m.aboutCursor])
+				}
 			}
 			return m, nil
 		}
@@ -1129,10 +1172,12 @@ func (m Model) dashboardView(width int) string {
 
 // aboutModal renders the About modal overlay.
 func (m Model) aboutModal() string {
-	banner := `  ___ _ __ ___  ___| |_
- / __| '__/ _ \/ __| __|
- \__ \ | |  __/\__ \ |_
- |___/_|  \___||___/\__|`
+	banner := `███████╗██████╗ ███████╗███████╗████████╗
+██╔════╝██╔══██╗██╔════╝██╔════╝╚══██╔══╝
+███████╗██████╔╝█████╗  ███████╗   ██║   
+╚════██║██╔══██╗██╔══╝  ╚════██║   ██║   
+███████║██║  ██║███████╗███████║   ██║   
+╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝`
 
 	inner := m.innerWidth() - 8
 	if inner < 40 {
@@ -1145,25 +1190,39 @@ func (m Model) aboutModal() string {
 	versionStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("10")).
 		Bold(true)
-	linkStyle := lipgloss.NewStyle().
+	linkActive := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("15")).
+		Background(lipgloss.Color("57")).
+		Bold(true).
+		Padding(0, 1)
+	linkInactive := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("12")).
 		Underline(true)
 	dimStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("8"))
 
+	links := []string{"GitHub", "Docs", "Issues", "Releases"}
+
+	var linkParts []string
+	for i, l := range links {
+		if i == m.aboutCursor {
+			linkParts = append(linkParts, linkActive.Render(l))
+		} else {
+			linkParts = append(linkParts, linkInactive.Render(l))
+		}
+	}
+	linkBar := lipgloss.JoinHorizontal(lipgloss.Top, linkParts...)
+
 	lines := []string{
 		logoStyle.Render(banner),
 		"",
-		versionStyle.Render("v"+m.appVersion) + dimStyle.Render("  —  TUI for the Slurm REST API"),
+		versionStyle.Render(m.appVersion) + dimStyle.Render("  —  TUI for the Slurm REST API"),
 		"",
 		lipgloss.NewStyle().Width(inner).Render(dimStyle.Render(strings.Repeat("─", inner))),
 		"",
-		linkStyle.Render("GitHub") + dimStyle.Render("  •  ") +
-			linkStyle.Render("Docs") + dimStyle.Render("  •  ") +
-			linkStyle.Render("Issues") + dimStyle.Render("  •  ") +
-			linkStyle.Render("Releases"),
+		linkBar,
 		"",
-		dimStyle.Render("press esc to close"),
+		dimStyle.Render("← → navigate  •  enter open  •  esc close"),
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Left, lines...)
