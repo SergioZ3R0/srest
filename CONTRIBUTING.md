@@ -32,7 +32,7 @@ environment, such as:
    go build ./...
    go run .
    ```
-4. (Optional) Spin up a real Slurm cluster for testing — see
+4. (Optional) Spin up a real Slurm cluster for testing  -  see
    [docs/test-lab.md](docs/test-lab.md).
 
 ## Pull Request Process

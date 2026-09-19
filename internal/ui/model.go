@@ -1219,7 +1219,7 @@ func (m Model) aboutModal() string {
 	lines := []string{
 		logoStyle.Render(banner),
 		"",
-		versionStyle.Render(m.appVersion) + dimStyle.Render("  —  TUI for the Slurm REST API"),
+		versionStyle.Render(m.appVersion) + dimStyle.Render("  -  TUI for the Slurm REST API"),
 		"",
 		lipgloss.NewStyle().Width(inner).Render(dimStyle.Render(strings.Repeat("─", inner))),
 		"",

@@ -168,7 +168,7 @@
             <section class="doc" id="installation" aria-labelledby="installation">
                 <h2>Installation</h2>
                 <h3>Pre-built binaries (recommended)</h3>
-                <p>Download and extract the binary for your platform from <a href="https://github.com/SergioZ3R0/srest/releases" style="color: var(--accent);">GitHub Releases</a> — no Go installation required.</p>
+                <p>Download and extract the binary for your platform from <a href="https://github.com/SergioZ3R0/srest/releases" style="color: var(--accent);">GitHub Releases</a>  -  no Go installation required.</p>
                 <div class="code-block">
                     <span class="comment"># Linux amd64</span><br>
                     <span class="cmd">curl -LO https://github.com/SergioZ3R0/srest/releases/latest/download/srest-linux-amd64.zip</span><br>
@@ -288,9 +288,9 @@
                     <h3>Query tab</h3>
                 <p>A Postman-style request composer with three user-focused endpoints:</p>
                 <ul>
-                    <li><strong>ping</strong> — connectivity check against slurmrestd.</li>
-                    <li><strong>get jobs</strong> — query jobs with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.</li>
-                    <li><strong>submit jobs</strong> — submit a job with name, partition, qos, account, gres, wall time, nodes, cpus/task, memory, script. Partition, account, qos and gres options are gathered from the cluster. Press <code>e</code> to open <code>$EDITOR</code>.</li>
+                    <li><strong>ping</strong>  -  connectivity check against slurmrestd.</li>
+                    <li><strong>get jobs</strong>  -  query jobs with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.</li>
+                    <li><strong>submit jobs</strong>  -  submit a job with name, partition, qos, account, gres, wall time, nodes, cpus/task, memory, script. Partition, account, qos and gres options are gathered from the cluster. Press <code>e</code> to open <code>$EDITOR</code>.</li>
                 </ul>
 
                 <h4>Query builder keys</h4>
@@ -313,15 +313,15 @@
             <section class="doc" id="features" aria-labelledby="features">
                 <h2>Features</h2>
                 <ul>
-                    <li><strong>Encrypted vault</strong> — store JWT and connection settings in an AES-256-GCM encrypted file (<code>~/.srest/config.vault</code>); credentials never sit plain on disk.</li>
-                    <li><strong>Dashboard</strong> — real cluster overview: nodes up/down, jobs by state, partitions and accounts.</li>
-                    <li><strong>Jobs</strong> — your jobs (filtered by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Cancel (<code>x</code>) and requeue (<code>r</code>) jobs directly from the TUI.</li>
-                    <li><strong>Nodes</strong> — cluster nodes with state, CPUs and memory; select a node for details.</li>
-                    <li><strong>Partitions</strong> — partition list with configured/total nodes, max wall time; press <code>j</code> to filter jobs.</li>
-                    <li><strong>Query builder</strong> — build requests against ping, get jobs and submit jobs with parameters gathered live from the cluster (state, account, partition, qos, gres).</li>
-                    <li><strong>Custom query</strong> — type or paste any request path to run it directly.</li>
-                    <li><strong>Request history</strong> — every request is logged with status, duration and warnings. Persisted across sessions in <code>~/.local/share/srest/history.json</code> (max 100 entries).</li>
-                    <li><strong>Version auto-detection</strong> — adapts to the slurmrestd data_parser (v0.0.40–45) and version-gates fields.</li>
+                    <li><strong>Encrypted vault</strong>  -  store JWT and connection settings in an AES-256-GCM encrypted file (<code>~/.srest/config.vault</code>); credentials never sit plain on disk.</li>
+                    <li><strong>Dashboard</strong>  -  real cluster overview: nodes up/down, jobs by state, partitions and accounts.</li>
+                    <li><strong>Jobs</strong>  -  your jobs (filtered by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Cancel (<code>x</code>) and requeue (<code>r</code>) jobs directly from the TUI.</li>
+                    <li><strong>Nodes</strong>  -  cluster nodes with state, CPUs and memory; select a node for details.</li>
+                    <li><strong>Partitions</strong>  -  partition list with configured/total nodes, max wall time; press <code>j</code> to filter jobs.</li>
+                    <li><strong>Query builder</strong>  -  build requests against ping, get jobs and submit jobs with parameters gathered live from the cluster (state, account, partition, qos, gres).</li>
+                    <li><strong>Custom query</strong>  -  type or paste any request path to run it directly.</li>
+                    <li><strong>Request history</strong>  -  every request is logged with status, duration and warnings. Persisted across sessions in <code>~/.local/share/srest/history.json</code> (max 100 entries).</li>
+                    <li><strong>Version auto-detection</strong>  -  adapts to the slurmrestd data_parser (v0.0.40–45) and version-gates fields.</li>
                 </ul>
             </section>
 
@@ -329,7 +329,7 @@
                 <h2>Test Lab</h2>
                 <p>To try srest against a real Slurm cluster (slurmctld, slurmdbd and slurmrestd) without setting up infrastructure, see the test lab guide:</p>
                 <ul>
-                    <li><a href="https://github.com/SergioZ3R0/srest/blob/main/docs/test-lab.md" style="color: var(--accent);">docs/test-lab.md</a> — spin up a Slurm test cluster with Docker.</li>
+                    <li><a href="https://github.com/SergioZ3R0/srest/blob/main/docs/test-lab.md" style="color: var(--accent);">docs/test-lab.md</a>  -  spin up a Slurm test cluster with Docker.</li>
                 </ul>
             </section>
         </main>

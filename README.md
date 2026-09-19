@@ -23,8 +23,8 @@ SSH-ing into the master node, using only HTTP requests to `slurmrestd`.
 REST API into a live, interactive dashboard. It lets you:
 
 - Monitor your **jobs**, cluster **nodes** and **partitions** at a glance.
-- Inspect job details — account, partition, time limits, run time, assigned
-  nodes and log paths — without SSH.
+- Inspect job details  -  account, partition, time limits, run time, assigned
+  nodes and log paths  -  without SSH.
 - **Compose API requests** visually (endpoint-aware parameters with options
   gathered live from the cluster: state, account, partition, qos) and
   inspect the request history.
@@ -34,22 +34,22 @@ REST API into a live, interactive dashboard. It lets you:
 
 It is written in **Go**, styled with
 [Lip Gloss](https://github.com/charmbracelet/lipgloss), and speaks directly to
-`slurmrestd` using JSON Web Token authentication — no SSH, no node login.
+`slurmrestd` using JSON Web Token authentication  -  no SSH, no node login.
 
 https://github.com/user-attachments/assets/3a20799b-b075-4556-ad54-e5e0ca921562
 
 ## Philosophy
 
 **srest is a pure REST API client.** It talks to `slurmrestd` and nothing
-else — no SSH, no local SLURM commands, no filesystem access. Run it from
+else  -  no SSH, no local SLURM commands, no filesystem access. Run it from
 your laptop against any cluster with zero dependencies on the cluster's
 tooling.
 
 This makes srest:
 
-- **Portable** — a single binary, no SLURM installation required.
-- **Secure** — no shell access needed; only the REST API endpoint must be reachable.
-- **Cluster-agnostic** — works against any `slurmrestd` version (v0.0.40–45) without modification.
+- **Portable**  -  a single binary, no SLURM installation required.
+- **Secure**  -  no shell access needed; only the REST API endpoint must be reachable.
+- **Cluster-agnostic**  -  works against any `slurmrestd` version (v0.0.40–45) without modification.
 
 If a feature isn't exposed by the Slurm REST API, srest doesn't attempt to
 work around it. What you see is exactly what `slurmrestd` provides.
@@ -135,29 +135,29 @@ Vault password can be set via `SREST_VAULT_PASS` env var to skip the prompt.
 
 ## Features
 
-- **Encrypted credential vault** — AES-256-GCM encrypted config file (`~/.srest/config.vault`) with PBKDF2 key derivation.
-- **JWT authentication** — `X-SLURM-USER-TOKEN` and `X-SLURM-USER-NAME` headers, plus Bearer token support for proxy setups.
-- **Auto-detection** — discovers the `slurmrestd` data_parser version (v0.0.40–v0.0.45) or accepts a pinned version.
-- **Version-gating** — adapts request fields to the detected API version; surfaces warnings and errors from slurmrestd.
-- **Dashboard** — real-time cluster overview: nodes up/down, jobs by state, partitions and accounts.
-- **Jobs, Nodes, Partitions** — live tables with detail panels, search/filter (`/`), and CSV export.
-- **Job actions** — cancel (`x`) and requeue (`r`) jobs directly from the TUI.
-- **Query builder** — visual request composer for ping, get jobs, and submit jobs with cluster-gathered options (state, account, partition, qos, gres).
-- **Custom query** — write or paste any request path and run it directly.
-- **Request history** — every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
+- **Encrypted credential vault**  -  AES-256-GCM encrypted config file (`~/.srest/config.vault`) with PBKDF2 key derivation.
+- **JWT authentication**  -  `X-SLURM-USER-TOKEN` and `X-SLURM-USER-NAME` headers, plus Bearer token support for proxy setups.
+- **Auto-detection**  -  discovers the `slurmrestd` data_parser version (v0.0.40–v0.0.45) or accepts a pinned version.
+- **Version-gating**  -  adapts request fields to the detected API version; surfaces warnings and errors from slurmrestd.
+- **Dashboard**  -  real-time cluster overview: nodes up/down, jobs by state, partitions and accounts.
+- **Jobs, Nodes, Partitions**  -  live tables with detail panels, search/filter (`/`), and CSV export.
+- **Job actions**  -  cancel (`x`) and requeue (`r`) jobs directly from the TUI.
+- **Query builder**  -  visual request composer for ping, get jobs, and submit jobs with cluster-gathered options (state, account, partition, qos, gres).
+- **Custom query**  -  write or paste any request path and run it directly.
+- **Request history**  -  every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
 
 ### Tabs
 
-- **Dashboard** — real cluster overview: nodes up/down, jobs running/pending/completed/failed, partitions and accounts.
-- **Jobs** — your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Cancel (`x`) and requeue (`r`) jobs directly from the TUI. Press `enter` in Partitions to view jobs by partition.
-- **Nodes** — cluster nodes with state, CPUs, memory and partitions; select a node to see its detail.
-- **Partitions** — partition list with configured/total nodes and max wall time. Press `enter` to filter jobs by partition.
-- **Query** — a request composer with three user-focused endpoints:
-  - **ping** — connectivity check.
-  - **get jobs** — query with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.
-  - **submit jobs** — submit a job with name, partition, qos, account, gres, wall time, nodes, cpus/task, memory, script. Partition, account, qos, and gres options are gathered from the cluster. Press `e` to open `$EDITOR`.
+- **Dashboard**  -  real cluster overview: nodes up/down, jobs running/pending/completed/failed, partitions and accounts.
+- **Jobs**  -  your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Cancel (`x`) and requeue (`r`) jobs directly from the TUI. Press `enter` in Partitions to view jobs by partition.
+- **Nodes**  -  cluster nodes with state, CPUs, memory and partitions; select a node to see its detail.
+- **Partitions**  -  partition list with configured/total nodes and max wall time. Press `enter` to filter jobs by partition.
+- **Query**  -  a request composer with three user-focused endpoints:
+  - **ping**  -  connectivity check.
+  - **get jobs**  -  query with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.
+  - **submit jobs**  -  submit a job with name, partition, qos, account, gres, wall time, nodes, cpus/task, memory, script. Partition, account, qos, and gres options are gathered from the cluster. Press `e` to open `$EDITOR`.
   - **Custom query** panel: type or paste any request path to run it directly.
-  - **Request history** — every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
+  - **Request history**  -  every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
 
 **Key bindings**
 
@@ -182,7 +182,7 @@ Vault password can be set via `SREST_VAULT_PASS` env var to skip the prompt.
 To try `srest` against a **real** Slurm cluster (with `slurmctld`,
 `slurmdbd` and `slurmrestd`) without setting up infrastructure, see:
 
-- [docs/test-lab.md](docs/test-lab.md) — spin up a Slurm test cluster with Docker.
+- [docs/test-lab.md](docs/test-lab.md)  -  spin up a Slurm test cluster with Docker.
 
 ## Tests
 
