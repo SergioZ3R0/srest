@@ -148,10 +148,8 @@ func vaultEncrypt() {
 		os.Exit(1)
 	}
 
-	fmt.Print("Vault password: ")
-	pass1 := readLine()
-	fmt.Print("Confirm password: ")
-	pass2 := readLine()
+	pass1 := readPassword("Vault password: ")
+	pass2 := readPassword("Confirm password: ")
 	if pass1 != pass2 {
 		fmt.Fprintln(os.Stderr, "error: passwords do not match")
 		os.Exit(1)
