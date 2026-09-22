@@ -715,9 +715,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
-		case msg.String() == "a":
-			m.showAbout = !m.showAbout
-			return m, nil
 		}
 
 		// About modal: esc closes, arrows navigate, enter opens.
@@ -774,6 +771,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.active = (m.active + 1) % len(m.tabs)
 			m.focusTab()
 			return m, nil
+		case "a":
+			// Toggle About modal (only when not editing text fields).
+			if m.active != 4 || !m.composer.editing {
+				m.showAbout = !m.showAbout
+				return m, nil
+			}
 		}
 
 		// Query tab: remaining keys (arrows, numbers, letters) drive the
