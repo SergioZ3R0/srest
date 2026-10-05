@@ -207,13 +207,13 @@ func vaultEdit() {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	if _, err := tmpFile.WriteString(plain); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
