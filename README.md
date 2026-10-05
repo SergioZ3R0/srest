@@ -146,6 +146,7 @@ Vault password can be set via `SREST_VAULT_PASS` env var to skip the prompt.
 - **Query builder**  -  visual request composer for ping, get jobs, and submit jobs with cluster-gathered options (state, account, partition, qos, gres).
 - **Custom query**  -  write or paste any request path and run it directly.
 - **Request history**  -  every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
+- **About modal**  -  press `Ctrl+O` for ASCII banner, version info, and links.
 
 ### Tabs
 
@@ -173,9 +174,10 @@ Vault password can be set via `SREST_VAULT_PASS` env var to skip the prompt.
 | `Home/End` / `g/G` | go to start / end |
 | `enter` | select / drill-down |
 | `/` | filter the current table |
-| `F5` | refresh (Jobs, Nodes, Partitions) |
+| `Ctrl+R` | refresh (Jobs, Nodes, Partitions) |
 | `x` | cancel selected job (Jobs tab) |
-| `r` | requeue selected job (Jobs tab) |
+| `r` | requeue selected job (Jobs tab) / run request (Query tab) |
+| `Ctrl+O` | About modal |
 | `?` | toggle help |
 
 ## Test Lab
