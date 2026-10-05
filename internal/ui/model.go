@@ -757,6 +757,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
+		// While a table filter is active, keys go to the search input.
+		if m.searching {
+			return m.handleSearchKey(msg)
+		}
+
 		// Tab navigation available from every tab (including Query).
 		switch msg.String() {
 		case "esc":
@@ -771,7 +776,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.active = (m.active + 1) % len(m.tabs)
 			m.focusTab()
 			return m, nil
-		case "a":
+		case "ctrl+o":
 			// Toggle About modal (only when not editing text fields).
 			if m.active != 4 || !m.composer.editing {
 				m.showAbout = !m.showAbout
@@ -783,11 +788,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// composer and its panels.
 		if m.active == 4 {
 			return m.handleQueryTabKey(msg)
-		}
-
-		// While a table filter is active, keys go to the search input.
-		if m.searching {
-			return m.handleSearchKey(msg)
 		}
 
 		// Delegate remaining keys to the active panel (table). Arrows here

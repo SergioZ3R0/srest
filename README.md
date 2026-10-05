@@ -124,6 +124,7 @@ Vault commands:
 | `srest vault init` | Create new encrypted config |
 | `srest vault encrypt` | Encrypt existing plain config |
 | `srest vault decrypt` | Decrypt and display contents |
+| `srest vault edit` | Decrypt, edit in $EDITOR, re-encrypt |
 
 Vault password can be set via `SREST_VAULT_PASS` env var to skip the prompt.
 

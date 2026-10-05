@@ -63,6 +63,8 @@ func handleVault(args []string) {
 		vaultEncrypt()
 	case "decrypt":
 		vaultDecrypt()
+	case "edit":
+		vaultEdit()
 	default:
 		printVaultUsage()
 	}
@@ -75,6 +77,7 @@ func printVaultUsage() {
 	fmt.Println("  srest vault init       Create a new encrypted config file")
 	fmt.Println("  srest vault encrypt    Encrypt an existing plain config file")
 	fmt.Println("  srest vault decrypt    Decrypt and display the vault contents")
+	fmt.Println("  srest vault edit       Decrypt, edit in $EDITOR, re-encrypt")
 }
 
 func vaultInit() {
@@ -181,6 +184,58 @@ func vaultDecrypt() {
 	}
 
 	fmt.Println(plain)
+}
+
+func vaultEdit() {
+	vaultPath := config.VaultPath()
+	if _, err := os.Stat(vaultPath); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "Vault not found: %s\n", vaultPath)
+		fmt.Fprintln(os.Stderr, "Create it first with 'srest vault init'.")
+		os.Exit(1)
+	}
+
+	pass := readPassword("Vault password: ")
+	plain, err := config.DecryptVault(vaultPath, pass)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Write to temp file and open in editor.
+	tmpFile, err := os.CreateTemp("", "srest-vault-*.conf")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(plain); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	tmpFile.Close()
+
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vi"
+	}
+
+	cmd := exec.Command(editor, tmpFile.Name())
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "editor error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Read back the edited content and re-encrypt.
+	if err := config.EncryptConfig(vaultPath, tmpFile.Name(), pass); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Vault updated: %s\n", vaultPath)
 }
 
 func currentUser() string {
