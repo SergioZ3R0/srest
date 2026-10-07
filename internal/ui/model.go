@@ -930,14 +930,19 @@ func (m *Model) layout() {
 		panel = 30
 	}
 
-	// Split the Query tab vertical space between composer (60%) and history.
+	// Split the Query tab vertical space.
 	queryH := h - 2
 	if queryH < 4 {
 		queryH = 4
 	}
-	composerBudget := int(float64(queryH) * 0.6)
+	// Composer (top row) gets 50%, history gets 30%, raw gets 20%.
+	composerBudget := int(float64(queryH) * 0.50)
 	if composerBudget < 2 {
 		composerBudget = 2
+	}
+	rawBudget := int(float64(queryH) * 0.20)
+	if rawBudget < 2 {
+		rawBudget = 2
 	}
 
 	// Sidebar + builder + output layout.
@@ -949,15 +954,15 @@ func (m *Model) layout() {
 	leftW := int(float64(remaining) * 0.55)
 	rightW := remaining - leftW
 	m.composer.sidebar.Width = sidebarW
-	m.composer.sidebar.Height = composerBudget
+	m.composer.sidebar.Height = composerBudget - 2
 	m.composer.builder.Width = leftW
-	m.composer.builder.Height = composerBudget
+	m.composer.builder.Height = composerBudget - 2
 	m.composer.output.Width = rightW
-	m.composer.output.Height = composerBudget
+	m.composer.output.Height = composerBudget - 2
 	m.composer.rebuild()
 
 	m.queryVP.Width = panel
-	m.queryVP.Height = queryH - composerBudget - 5
+	m.queryVP.Height = queryH - composerBudget - rawBudget - 5
 	if m.queryVP.Height < 1 {
 		m.queryVP.Height = 1
 	}
@@ -993,15 +998,15 @@ func rawRunCmd(c *api.Client, path string) tea.Cmd {
 }
 
 // handleQueryTabKey routes keys within the Query tab based on the focused
-// panel. 'f' cycles focus forward, 'shift+f' cycles backward; 'r' runs the
-// built request from anywhere.
+// panel. 'f' cycles focus forward, 'F' (shift+f) cycles backward;
+// 'r' runs the built request from anywhere.
 func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "f":
 		m.queryFocus = (m.queryFocus + 1) % 5
 		m.syncFocus()
 		return m, nil
-	case "shift+f":
+	case "F":
 		m.queryFocus = (m.queryFocus - 1 + 5) % 5
 		m.syncFocus()
 		return m, nil
@@ -1023,6 +1028,12 @@ func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.queryVP, _ = m.queryVP.Update(msg)
 		return m, nil
 	case focusRaw:
+		if msg.String() == "esc" {
+			// Exit custom query panel back to sidebar.
+			m.queryFocus = focusSidebar
+			m.rawInput.Blur()
+			return m, nil
+		}
 		if msg.String() == "enter" {
 			path := strings.TrimSpace(m.rawInput.Value())
 			if path == "" {
@@ -1050,17 +1061,24 @@ func (m *Model) syncFocus() {
 func (m Model) handleSidebarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "up", "k":
-		eps := m.composer.currentCategory().endpoints
 		idx := m.composer.endpointIdx - 1
 		if idx < 0 {
-			idx = len(eps) - 1
+			// Wrap to previous category's last endpoint.
+			prevCat := (m.composer.categoryIdx - 1 + len(categories)) % len(categories)
+			m.composer.selectCategory(prevCat)
+			m.composer.selectEndpoint(len(categories[prevCat].endpoints) - 1)
+			return m, nil
 		}
 		m.composer.selectEndpoint(idx)
 	case "down", "j":
 		eps := m.composer.currentCategory().endpoints
 		idx := m.composer.endpointIdx + 1
 		if idx >= len(eps) {
-			idx = 0
+			// Wrap to next category's first endpoint.
+			nextCat := (m.composer.categoryIdx + 1) % len(categories)
+			m.composer.selectCategory(nextCat)
+			m.composer.selectEndpoint(0)
+			return m, nil
 		}
 		m.composer.selectEndpoint(idx)
 	case "tab", "]":
