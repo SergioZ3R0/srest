@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -111,4 +113,29 @@ func exportPartitions(data []api.PartitionInfo) (string, error) {
 func exportPath(kind string) string {
 	ts := time.Now().Format("20060102-150405")
 	return filepath.Join(".", fmt.Sprintf("srest-%s-%s.csv", kind, ts))
+}
+
+// exportResponse writes the query response body to a JSON file.
+func exportResponse(body string) (string, error) {
+	ts := time.Now().Format("20060102-150405")
+	path := filepath.Join(".", fmt.Sprintf("srest-response-%s.json", ts))
+
+	// Try to pretty-print as JSON; fall back to raw.
+	var pretty []byte
+	if err := json.Unmarshal([]byte(body), &pretty); err == nil {
+		// Already valid JSON - re-marshal pretty.
+		var buf bytes.Buffer
+		if err := json.Indent(&buf, []byte(body), "", "  "); err == nil {
+			pretty = buf.Bytes()
+		} else {
+			pretty = []byte(body)
+		}
+	} else {
+		pretty = []byte(body)
+	}
+
+	if err := os.WriteFile(path, pretty, 0644); err != nil {
+		return "", err
+	}
+	return path, nil
 }

@@ -1104,6 +1104,19 @@ func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.composer, cmd = m.composer.Update(msg)
 		return m, cmd
 	case focusResponse:
+		if msg.String() == "e" {
+			if m.composer.body == "" {
+				m.status = "Nothing to export - run a query first"
+				return m, nil
+			}
+			path, err := exportResponse(m.composer.body)
+			if err != nil {
+				m.status = "Export failed: " + err.Error()
+			} else {
+				m.status = "Exported to " + path
+			}
+			return m, nil
+		}
 		m.composer.output, _ = m.composer.output.Update(msg)
 		return m, nil
 	case focusHistory:
