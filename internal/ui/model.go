@@ -97,6 +97,7 @@ func New(client *api.Client, appVersion string) Model {
 		appVersion: appVersion,
 		tabs:       []string{"Dashboard", "Jobs", "Nodes", "Partitions", "Query"},
 		active:     0,
+		queryFocus: focusSidebar,
 		jobs:       newJobsTable(),
 		nodes:      newNodesTable(),
 		partitions: newPartitionsTable(),
@@ -978,6 +979,7 @@ const (
 	focusResponse
 	focusHistory
 	focusRaw
+	focusSidebar
 )
 
 // rawRunCmd issues a request with a manually written/typed path and reuses
@@ -991,22 +993,25 @@ func rawRunCmd(c *api.Client, path string) tea.Cmd {
 }
 
 // handleQueryTabKey routes keys within the Query tab based on the focused
-// panel. 'f' cycles focus; 'r' runs the built request from anywhere.
+// panel. 'f' cycles focus forward, 'shift+f' cycles backward; 'r' runs the
+// built request from anywhere.
 func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "f":
-		m.queryFocus = (m.queryFocus + 1) % 4
-		if m.queryFocus == focusRaw {
-			m.rawInput.Focus()
-		} else {
-			m.rawInput.Blur()
-		}
+		m.queryFocus = (m.queryFocus + 1) % 5
+		m.syncFocus()
+		return m, nil
+	case "shift+f":
+		m.queryFocus = (m.queryFocus - 1 + 5) % 5
+		m.syncFocus()
 		return m, nil
 	case "r":
 		return m, m.composer.run(m.client)
 	}
 
 	switch m.queryFocus {
+	case focusSidebar:
+		return m.handleSidebarKey(msg)
 	case focusBuilder:
 		var cmd tea.Cmd
 		m.composer, cmd = m.composer.Update(msg)
@@ -1032,6 +1037,40 @@ func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// syncFocus updates input focus based on queryFocus state.
+func (m *Model) syncFocus() {
+	if m.queryFocus == focusRaw {
+		m.rawInput.Focus()
+	} else {
+		m.rawInput.Blur()
+	}
+}
+
+// handleSidebarKey processes keys when the sidebar is focused.
+func (m Model) handleSidebarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "up", "k":
+		eps := m.composer.currentCategory().endpoints
+		idx := m.composer.endpointIdx - 1
+		if idx < 0 {
+			idx = len(eps) - 1
+		}
+		m.composer.selectEndpoint(idx)
+	case "down", "j":
+		eps := m.composer.currentCategory().endpoints
+		idx := m.composer.endpointIdx + 1
+		if idx >= len(eps) {
+			idx = 0
+		}
+		m.composer.selectEndpoint(idx)
+	case "tab", "]":
+		m.composer.selectCategory((m.composer.categoryIdx + 1) % len(categories))
+	case "shift+tab", "[":
+		m.composer.selectCategory((m.composer.categoryIdx - 1 + len(categories)) % len(categories))
+	}
+	return m, nil
+}
+
 // queryTabView renders the Query tab: sidebar + builder + output side by side,
 // with the request history below. The focused panel is highlighted.
 func (m Model) queryTabView(width int) string {
@@ -1048,7 +1087,7 @@ func (m Model) queryTabView(width int) string {
 	leftW := int(float64(remaining) * 0.55)
 	rightW := remaining - leftW
 
-	sidebar := composerPanelStyle.Width(sidebarW).Render(
+	sidebar := focusedPanel(m.queryFocus == focusSidebar, composerPanelStyle).Width(sidebarW).Render(
 		panelTitleStyle.Render("Endpoints") + "\n" + m.composer.sidebar.View(),
 	)
 	builder := focusedPanel(m.queryFocus == focusBuilder, composerPanelStyle).Width(leftW).Render(
