@@ -113,10 +113,8 @@ func (c *composer) rebuild() {
 
 // ensureCursorVisible scrolls the builder so the selected parameter is shown.
 func (c *composer) ensureCursorVisible() {
-	ep := c.currentEndpoint()
-	// Layout: line 0 = endpoint name, line 1 = URL, params start at line 2.
+	// Layout: line 0 = method+URL, line 1 = blank, params start at line 2.
 	line := 2 + c.cursor
-	_ = ep
 	y := line - c.builder.Height/2
 	if y < 0 {
 		y = 0
@@ -153,11 +151,10 @@ func (c *composer) selectCategory(i int) {
 // move moves the param cursor by delta, respecting bounds.
 func (c *composer) move(delta int) {
 	ep := c.currentEndpoint()
-	params := ep.getParams()
-	if len(params) == 0 {
+	if len(ep.params) == 0 {
 		return
 	}
-	c.cursor = (c.cursor + delta + len(params)) % len(params)
+	c.cursor = (c.cursor + delta + len(ep.params)) % len(ep.params)
 	c.rebuild()
 	c.ensureCursorVisible()
 }
@@ -165,11 +162,10 @@ func (c *composer) move(delta int) {
 // startEdit focuses the text input on the selected parameter.
 func (c *composer) startEdit() {
 	ep := c.currentEndpoint()
-	params := ep.getParams()
-	if len(params) == 0 || c.cursor >= len(params) {
+	if len(ep.params) == 0 || c.cursor >= len(ep.params) {
 		return
 	}
-	c.input.SetValue(params[c.cursor].value)
+	c.input.SetValue(ep.params[c.cursor].value)
 	c.editing = true
 	c.rebuild()
 }
@@ -180,9 +176,8 @@ func (c *composer) stopEdit() {
 		return
 	}
 	ep := c.currentEndpoint()
-	params := ep.getParams()
-	if c.cursor < len(params) {
-		params[c.cursor].value = c.input.Value()
+	if c.cursor < len(ep.params) {
+		ep.params[c.cursor].value = c.input.Value()
 	}
 	c.editing = false
 	c.rebuild()
@@ -191,9 +186,8 @@ func (c *composer) stopEdit() {
 // clearValue empties the selected parameter's value.
 func (c *composer) clearValue() {
 	ep := c.currentEndpoint()
-	params := ep.getParams()
-	if c.cursor < len(params) {
-		params[c.cursor].value = ""
+	if c.cursor < len(ep.params) {
+		ep.params[c.cursor].value = ""
 		c.rebuild()
 	}
 }
@@ -201,11 +195,10 @@ func (c *composer) clearValue() {
 // cycleOption moves the selected parameter's value through its options.
 func (c *composer) cycleOption(delta int) {
 	ep := c.currentEndpoint()
-	params := ep.getParams()
-	if c.cursor >= len(params) {
+	if c.cursor >= len(ep.params) {
 		return
 	}
-	p := &params[c.cursor]
+	p := &ep.params[c.cursor]
 	if len(p.options) == 0 {
 		return
 	}
@@ -224,8 +217,7 @@ func (c *composer) cycleOption(delta int) {
 // hasOptionsAtCursor reports whether the selected parameter offers options.
 func (c composer) hasOptionsAtCursor() bool {
 	ep := c.currentEndpoint()
-	params := ep.getParams()
-	return c.cursor < len(params) && len(params[c.cursor].options) > 0
+	return c.cursor < len(ep.params) && len(ep.params[c.cursor].options) > 0
 }
 
 // setPartitionOptions feeds the partitions gathered from the cluster into the
@@ -504,7 +496,7 @@ func (c composer) renderBuilder() string {
 
 	sb.WriteString(methodStyle.Render(ep.method) + " " + pathStyle.Render(c.builtPath()) + "\n\n")
 
-	params := ep.getParams()
+	params := ep.params
 	if len(params) == 0 {
 		sb.WriteString(detailStyle.Render("No parameters for this endpoint.") + "\n")
 	} else {
@@ -527,7 +519,12 @@ func (c composer) renderBuilder() string {
 				if p.kind == paramPath {
 					valueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 				}
-				row = nameStyle.Render(label) + "  " + valueStyle.Render(p.value)
+				value := p.value
+				if value == "" && p.kind == paramPath {
+					value = "{" + p.name + "}"
+					valueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+				}
+				row = nameStyle.Render(label) + "  " + valueStyle.Render(value)
 			}
 			if i == c.cursor && !c.editing {
 				row = composerParamCursor.Render(row)

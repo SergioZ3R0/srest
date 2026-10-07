@@ -1166,7 +1166,7 @@ func (m Model) queryTabView(width int) string {
 	builder := focusedPanel(m.queryFocus == focusBuilder, composerPanelStyle).Width(leftW).Render(
 		panelTitleStyle.Render("Builder") + "\n" + m.composer.builder.View(),
 	)
-	output := focusedPanel(m.queryFocus == focusResponse, outputPanelStyle).Width(rightW).Render(
+	output := focusedPanel(m.queryFocus == focusResponse, composerPanelStyle).Width(rightW).Render(
 		panelTitleStyle.Render("Response") + "\n" + m.composer.output.View(),
 	)
 	top := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, builder, output)
