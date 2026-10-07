@@ -83,18 +83,6 @@ var (
 	queryDetailStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("8"))
 
-	// composerEndpointActive formats the selected endpoint.
-	composerEndpointActive = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("15")).
-				Background(lipgloss.Color("57")).
-				Padding(0, 1)
-
-	// composerEndpoint formats an unselected endpoint.
-	composerEndpoint = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("8")).
-				Padding(0, 1)
-
 	// composerParamName formats a parameter name.
 	composerParamName = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("12")).
@@ -108,10 +96,6 @@ var (
 	composerParamCursor = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("229")).
 				Background(lipgloss.Color("57"))
-
-	// composerURL formats the built URL.
-	composerURL = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("8"))
 
 	// composerHint formats the key hints.
 	composerHint = lipgloss.NewStyle().

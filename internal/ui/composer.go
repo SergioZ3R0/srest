@@ -338,7 +338,7 @@ func (c composer) run(client *api.Client) tea.Cmd {
 			var action string
 			for _, p := range ep.params {
 				if p.name == "job_id" && p.value != "" {
-					fmt.Sscanf(p.value, "%d", &jobID)
+					_, _ = fmt.Sscanf(p.value, "%d", &jobID)
 				}
 				if p.name == "action" && p.value != "" {
 					action = p.value
@@ -367,7 +367,7 @@ func (c composer) run(client *api.Client) tea.Cmd {
 			var jobID uint32
 			for _, p := range ep.params {
 				if p.name == "job_id" && p.value != "" {
-					fmt.Sscanf(p.value, "%d", &jobID)
+					_, _ = fmt.Sscanf(p.value, "%d", &jobID)
 				}
 			}
 			if jobID == 0 {
