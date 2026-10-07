@@ -133,6 +133,7 @@ func (c *composer) selectEndpoint(i int) {
 		c.editing = false
 		c.status = ""
 		c.rebuild()
+		c.ensureSidebarVisible()
 	}
 }
 
@@ -145,6 +146,7 @@ func (c *composer) selectCategory(i int) {
 		c.editing = false
 		c.status = ""
 		c.rebuild()
+		c.ensureSidebarVisible()
 	}
 }
 
@@ -460,6 +462,36 @@ func (c composer) renderSidebar() string {
 		}
 	}
 	return sb.String()
+}
+
+// sidebarLine returns the 0-based line number of the selected endpoint in the
+// sidebar content. Each category header is 1 line, each endpoint is 1 line.
+func (c composer) sidebarLine() int {
+	line := 0
+	for ci, cat := range categories {
+		line++ // category header
+		if ci == c.categoryIdx {
+			return line + c.endpointIdx
+		}
+		line += len(cat.endpoints)
+	}
+	return line
+}
+
+// ensureSidebarVisible scrolls the sidebar viewport to keep the selected
+// endpoint visible.
+func (c *composer) ensureSidebarVisible() {
+	line := c.sidebarLine()
+	h := c.sidebar.Height
+	if h <= 0 {
+		return
+	}
+	y := c.sidebar.YOffset
+	if line < y {
+		c.sidebar.SetYOffset(line)
+	} else if line >= y+h {
+		c.sidebar.SetYOffset(line - h + 1)
+	}
 }
 
 // renderBuilder builds the params panel for the selected endpoint.

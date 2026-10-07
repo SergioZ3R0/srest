@@ -763,7 +763,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleSearchKey(msg)
 		}
 
-		// Tab navigation available from every tab (including Query).
+		// Query tab: handle keys via handleQueryTabKey FIRST.
+		// This ensures edit-mode inputs get all keys before global handlers.
+		if m.active == 4 {
+			return m.handleQueryTabKey(msg)
+		}
+
+		// Tab navigation available from every tab (NOT Query - handled above).
 		switch msg.String() {
 		case "esc":
 			m.active = 0
@@ -779,16 +785,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "ctrl+o":
 			// Toggle About modal (only when not editing text fields).
-			if m.active != 4 || !m.composer.editing {
+			if !m.composer.editing {
 				m.showAbout = !m.showAbout
 				return m, nil
 			}
-		}
-
-		// Query tab: remaining keys (arrows, numbers, letters) drive the
-		// composer and its panels.
-		if m.active == 4 {
-			return m.handleQueryTabKey(msg)
 		}
 
 		// Delegate remaining keys to the active panel (table). Arrows here
@@ -1062,6 +1062,18 @@ func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "r":
 		return m, m.composer.run(m.client)
+	case "tab", "]":
+		m.active = (m.active + 1) % len(m.tabs)
+		m.focusTab()
+		return m, nil
+	case "shift+tab", "[":
+		m.active = (m.active - 1 + len(m.tabs)) % len(m.tabs)
+		m.focusTab()
+		return m, nil
+	case "esc":
+		m.active = 0
+		m.focusTab()
+		return m, nil
 	}
 
 	switch m.queryFocus {
