@@ -692,7 +692,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case editorDoneMsg:
 		if msg.err == nil {
 			// Set the script parameter value from the edited file.
-			ep := &endpoints[m.composer.active]
+			ep := m.composer.currentEndpoint()
 			for i := range ep.params {
 				if ep.params[i].name == "script" {
 					ep.params[i].value = msg.content
@@ -938,8 +938,17 @@ func (m *Model) layout() {
 	if composerBudget < 2 {
 		composerBudget = 2
 	}
-	leftW := int(float64(panel) * 0.55)
-	rightW := panel - leftW
+
+	// Sidebar + builder + output layout.
+	sidebarW := 18
+	if panel < 80 {
+		sidebarW = 14
+	}
+	remaining := panel - sidebarW
+	leftW := int(float64(remaining) * 0.55)
+	rightW := remaining - leftW
+	m.composer.sidebar.Width = sidebarW
+	m.composer.sidebar.Height = composerBudget
 	m.composer.builder.Width = leftW
 	m.composer.builder.Height = composerBudget
 	m.composer.output.Width = rightW
@@ -1023,23 +1032,32 @@ func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// queryTabView renders the Query tab: builder and output side by side, with
-// the request history below. The focused panel is highlighted.
+// queryTabView renders the Query tab: sidebar + builder + output side by side,
+// with the request history below. The focused panel is highlighted.
 func (m Model) queryTabView(width int) string {
 	panel := width - 4
 	if panel < 30 {
 		panel = 30
 	}
-	leftW := int(float64(panel) * 0.55)
-	rightW := panel - leftW
 
+	sidebarW := 18
+	if panel < 80 {
+		sidebarW = 14
+	}
+	remaining := panel - sidebarW
+	leftW := int(float64(remaining) * 0.55)
+	rightW := remaining - leftW
+
+	sidebar := composerPanelStyle.Width(sidebarW).Render(
+		panelTitleStyle.Render("Endpoints") + "\n" + m.composer.sidebar.View(),
+	)
 	builder := focusedPanel(m.queryFocus == focusBuilder, composerPanelStyle).Width(leftW).Render(
 		panelTitleStyle.Render("Builder") + "\n" + m.composer.builder.View(),
 	)
 	output := focusedPanel(m.queryFocus == focusResponse, outputPanelStyle).Width(rightW).Render(
 		panelTitleStyle.Render("Response") + "\n" + m.composer.output.View(),
 	)
-	top := lipgloss.JoinHorizontal(lipgloss.Top, builder, output)
+	top := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, builder, output)
 
 	raw := focusedPanel(m.queryFocus == focusRaw, historyPanelStyle).Width(panel).Render(
 		panelTitleStyle.Render("Custom query") + "\n" +
