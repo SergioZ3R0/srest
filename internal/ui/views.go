@@ -30,6 +30,7 @@ var (
 		{Title: "CPUs", Width: 8},
 		{Title: "Alloc", Width: 6},
 		{Title: "Load", Width: 20},
+		{Title: "GPUs", Width: 8},
 		{Title: "Memory", Width: 10},
 		{Title: "Partitions", Width: 16},
 	}
@@ -37,7 +38,8 @@ var (
 	partitionsColumns = []table.Column{
 		{Title: "Name", Width: 12},
 		{Title: "Nodes", Width: 18},
-		{Title: "Load", Width: 20},
+		{Title: "CPU", Width: 20},
+		{Title: "GPU", Width: 20},
 		{Title: "Total", Width: 8},
 	}
 )

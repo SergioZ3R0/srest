@@ -313,12 +313,20 @@ func nodeRows(data []api.NodeInfo, q string) []table.Row {
 			empty := 10 - filled
 			cpuBar = strings.Repeat("█", filled) + strings.Repeat("░", empty) + fmt.Sprintf(" %3.0f%%", pct)
 		}
+		// GPU info.
+		totalGPUs := api.ParseGRESCount(n.Gres)
+		usedGPUs := api.ParseGRESCount(n.AllocGres)
+		gpuStr := "-"
+		if totalGPUs > 0 {
+			gpuStr = fmt.Sprintf("%d/%d", usedGPUs, totalGPUs)
+		}
 		row := table.Row{
 			n.Name,
 			strings.Join(n.State, ","),
 			fmt.Sprintf("%d", n.CPUs),
 			fmt.Sprintf("%d", n.AllocCPUs),
 			cpuBar,
+			gpuStr,
 			fmt.Sprintf("%dMB", n.RealMemory),
 			strings.Join(n.Partitions, ","),
 		}
@@ -335,20 +343,32 @@ func partitionRows(data []api.PartitionInfo, loads []api.PartitionLoad, q string
 	rows := make([]table.Row, 0, len(data))
 	for _, p := range data {
 		// Find matching load data for this partition.
-		loadBar := ""
+		cpuBar := ""
+		gpuBar := ""
 		for _, pl := range loads {
 			if pl.Name == p.Name {
+				// CPU load bar.
 				pct := pl.CPUAllocPercent()
 				filled := int(pct / 100 * 10)
 				empty := 10 - filled
-				loadBar = strings.Repeat("█", filled) + strings.Repeat("░", empty) + fmt.Sprintf(" %3.0f%%", pct)
+				cpuBar = strings.Repeat("█", filled) + strings.Repeat("░", empty) + fmt.Sprintf(" %3.0f%%", pct)
+				// GPU load bar.
+				if pl.TotalGPUs > 0 {
+					gpuPct := pl.GPUAllocPercent()
+					gFilled := int(gpuPct / 100 * 10)
+					gEmpty := 10 - gFilled
+					gpuBar = strings.Repeat("█", gFilled) + strings.Repeat("░", gEmpty) + fmt.Sprintf(" %3.0f%%", gpuPct)
+				} else {
+					gpuBar = "-"
+				}
 				break
 			}
 		}
 		row := table.Row{
 			p.Name,
 			p.Nodes.Configured,
-			loadBar,
+			cpuBar,
+			gpuBar,
 			fmt.Sprintf("%d", p.Nodes.Total),
 		}
 		if !rowMatches(row, q) {
