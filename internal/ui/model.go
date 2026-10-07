@@ -946,13 +946,22 @@ func (m *Model) layout() {
 	}
 
 	// Sidebar + builder + output layout. Sidebar is wider to avoid cutoff.
-	sidebarW := 22
-	if panel < 80 {
-		sidebarW = 18
+	sidebarW := 24
+	if panel < 100 {
+		sidebarW = 20
+	}
+	if panel < 70 {
+		sidebarW = 16
 	}
 	remaining := panel - sidebarW
-	leftW := int(float64(remaining) * 0.50)
-	rightW := remaining - leftW
+	leftW := remaining/2 - 1
+	rightW := remaining - leftW - 2
+	if leftW < 20 {
+		leftW = 20
+	}
+	if rightW < 20 {
+		rightW = 20
+	}
 	m.composer.sidebar.Width = sidebarW
 	m.composer.sidebar.Height = composerBudget - 2
 	m.composer.builder.Width = leftW
@@ -1001,6 +1010,47 @@ func rawRunCmd(c *api.Client, path string) tea.Cmd {
 // panel. 'f' cycles focus forward, 'F' (shift+f) cycles backward;
 // 'r' runs the built request from anywhere.
 func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// When raw input is in edit mode, ALL keys go to the input.
+	if m.queryFocus == focusRaw && m.rawInput.Focused() {
+		switch msg.String() {
+		case "esc":
+			m.rawInput.Blur()
+			return m, nil
+		case "enter":
+			path := strings.TrimSpace(m.rawInput.Value())
+			if path == "" {
+				m.rawInput.Blur()
+				return m, nil
+			}
+			m.rawInput.Blur()
+			return m, rawRunCmd(m.client, path)
+		}
+		var cmd tea.Cmd
+		m.rawInput, cmd = m.rawInput.Update(msg)
+		return m, cmd
+	}
+
+	// When raw input is NOT editing: f/F/r work as focus/run keys.
+	if m.queryFocus == focusRaw {
+		switch msg.String() {
+		case "enter":
+			m.rawInput.Focus()
+			return m, nil
+		case "f":
+			m.queryFocus = (m.queryFocus + 1) % 5
+			m.syncFocus()
+			return m, nil
+		case "F":
+			m.queryFocus = (m.queryFocus - 1 + 5) % 5
+			m.syncFocus()
+			return m, nil
+		case "r":
+			return m, m.composer.run(m.client)
+		}
+		return m, nil
+	}
+
+	// Global keys for all other panels.
 	switch msg.String() {
 	case "f":
 		m.queryFocus = (m.queryFocus + 1) % 5
@@ -1027,43 +1077,6 @@ func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case focusHistory:
 		m.queryVP, _ = m.queryVP.Update(msg)
 		return m, nil
-	case focusRaw:
-		// When NOT in edit mode: enter starts editing, f cycles focus, r runs.
-		if !m.rawInput.Focused() {
-			switch msg.String() {
-			case "enter":
-				m.rawInput.Focus()
-				return m, nil
-			case "f":
-				m.queryFocus = (m.queryFocus + 1) % 5
-				m.syncFocus()
-				return m, nil
-			case "F":
-				m.queryFocus = (m.queryFocus - 1 + 5) % 5
-				m.syncFocus()
-				return m, nil
-			case "r":
-				return m, m.composer.run(m.client)
-			}
-			return m, nil
-		}
-		// When in edit mode: esc exits editing (stays in raw panel), enter runs.
-		switch msg.String() {
-		case "esc":
-			m.rawInput.Blur()
-			return m, nil
-		case "enter":
-			path := strings.TrimSpace(m.rawInput.Value())
-			if path == "" {
-				m.rawInput.Blur()
-				return m, nil
-			}
-			m.rawInput.Blur()
-			return m, rawRunCmd(m.client, path)
-		}
-		var cmd tea.Cmd
-		m.rawInput, cmd = m.rawInput.Update(msg)
-		return m, cmd
 	}
 	return m, nil
 }
@@ -1113,17 +1126,27 @@ func (m Model) handleSidebarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // with the request history below. The focused panel is highlighted.
 func (m Model) queryTabView(width int) string {
 	panel := width - 4
-	if panel < 30 {
-		panel = 30
+	if panel < 40 {
+		panel = 40
 	}
 
-	sidebarW := 22
-	if panel < 80 {
-		sidebarW = 18
+	sidebarW := 24
+	if panel < 100 {
+		sidebarW = 20
+	}
+	if panel < 70 {
+		sidebarW = 16
 	}
 	remaining := panel - sidebarW
-	leftW := int(float64(remaining) * 0.50)
-	rightW := remaining - leftW
+	// Builder and output split remaining space evenly with small gutter.
+	leftW := remaining/2 - 1
+	rightW := remaining - leftW - 2
+	if leftW < 20 {
+		leftW = 20
+	}
+	if rightW < 20 {
+		rightW = 20
+	}
 
 	sidebar := focusedPanel(m.queryFocus == focusSidebar, composerPanelStyle).Width(sidebarW).Render(
 		panelTitleStyle.Render("Endpoints") + "\n" + m.composer.sidebar.View(),
@@ -1139,7 +1162,7 @@ func (m Model) queryTabView(width int) string {
 	// Custom query panel with edit mode indicator.
 	rawTitle := "Custom query"
 	if m.queryFocus == focusRaw && m.rawInput.Focused() {
-		rawTitle = "Custom query [editing - esc to exit, r to run]"
+		rawTitle = "Custom query [editing - esc to exit, enter to run]"
 	}
 	raw := focusedPanel(m.queryFocus == focusRaw, historyPanelStyle).Width(panel).Render(
 		panelTitleStyle.Render(rawTitle) + "\n" +
