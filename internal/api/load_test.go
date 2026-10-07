@@ -27,3 +27,60 @@ func TestParseGRESCount(t *testing.T) {
 		})
 	}
 }
+
+func TestParseTRESGPU(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want int
+	}{
+		{"empty", "", 0},
+		{"simple", "cpu=64,mem=1216G,gres/gpu=3", 3},
+		{"typed", "cpu=64,mem=1216G,gres/gpu=3,gres/gpu:l40s=3", 3},
+		{"no gpu", "cpu=64,mem=1216G", 0},
+		{"complex", "cpu=128,mem=1547658M,gres/gpu=4,gres/gpu:l40s=4,gres/tmpsize=7696581394432", 4},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ParseTRESGPU(tt.in); got != tt.want {
+				t.Errorf("ParseTRESGPU(%q) = %d, want %d", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNodeAllocGPUs(t *testing.T) {
+	tests := []struct {
+		name string
+		node NodeInfo
+		want int
+	}{
+		{
+			name: "from alloc_gres",
+			node: NodeInfo{AllocGres: "gpu:b200:8(IDX:0-7)"},
+			want: 8,
+		},
+		{
+			name: "from alloc_tres fallback",
+			node: NodeInfo{AllocGres: "", AllocTRES: "cpu=64,mem=1216G,gres/gpu=3,gres/gpu:l40s=3"},
+			want: 3,
+		},
+		{
+			name: "alloc_gres preferred",
+			node: NodeInfo{AllocGres: "gpu:2", AllocTRES: "gres/gpu=5"},
+			want: 2,
+		},
+		{
+			name: "no gpu",
+			node: NodeInfo{},
+			want: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NodeAllocGPUs(tt.node); got != tt.want {
+				t.Errorf("NodeAllocGPUs() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}

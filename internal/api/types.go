@@ -166,6 +166,7 @@ type NodeInfo struct {
 	Partitions  StringList `json:"partitions"`
 	Gres        string     `json:"gres"`
 	AllocGres   string     `json:"alloc_gres"`
+	AllocTRES   string     `json:"alloc_tres"`
 }
 
 // PartitionInfo is a Slurm partition as returned by GET /slurm/vX/partitions.

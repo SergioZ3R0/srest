@@ -35,7 +35,7 @@ func ComputePartitionLoads(nodes []NodeInfo) []PartitionLoad {
 			a.totalMem += n.RealMemory
 			a.usedMem += n.AllocMemory
 			a.totalGPUs += ParseGRESCount(n.Gres)
-			a.usedGPUs += ParseGRESCount(n.AllocGres)
+			a.usedGPUs += NodeAllocGPUs(n)
 		}
 	}
 
@@ -96,4 +96,35 @@ func ParseGRESCount(s string) int {
 		total += n
 	}
 	return total
+}
+
+// ParseTRESGPU extracts the GPU count from a TRES string.
+// TRES format: "cpu=64,mem=1216G,gres/gpu=3,gres/gpu:l40s=3,gres/tmpsize=..."
+// Returns the gres/gpu count (ignores typed variants like gres/gpu:l40s).
+func ParseTRESGPU(s string) int {
+	if s == "" {
+		return 0
+	}
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(part)
+		// Match "gres/gpu=N" but not "gres/gpu:type=N".
+		if strings.HasPrefix(part, "gres/gpu=") {
+			val := strings.TrimPrefix(part, "gres/gpu=")
+			n, err := strconv.Atoi(val)
+			if err != nil {
+				continue
+			}
+			return n
+		}
+	}
+	return 0
+}
+
+// NodeAllocGPUs returns the allocated GPU count for a node, preferring
+// alloc_gres and falling back to alloc_tres.
+func NodeAllocGPUs(n NodeInfo) int {
+	if count := ParseGRESCount(n.AllocGres); count > 0 {
+		return count
+	}
+	return ParseTRESGPU(n.AllocTRES)
 }

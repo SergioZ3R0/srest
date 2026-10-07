@@ -315,7 +315,7 @@ func nodeRows(data []api.NodeInfo, q string) []table.Row {
 		}
 		// GPU info.
 		totalGPUs := api.ParseGRESCount(n.Gres)
-		usedGPUs := api.ParseGRESCount(n.AllocGres)
+		usedGPUs := api.NodeAllocGPUs(n)
 		gpuStr := "-"
 		if totalGPUs > 0 {
 			gpuStr = fmt.Sprintf("%d/%d", usedGPUs, totalGPUs)
@@ -1446,7 +1446,7 @@ func (m Model) nodeDetailView() string {
 			}
 			totalGPUs := api.ParseGRESCount(n.Gres)
 			if totalGPUs > 0 {
-				usedGPUs := api.ParseGRESCount(n.AllocGres)
+				usedGPUs := api.NodeAllocGPUs(n)
 				gpuPct := float64(usedGPUs) / float64(totalGPUs) * 100
 				detail += loadBar("gpu", gpuPct, int64(usedGPUs), int64(totalGPUs), "", 20) + "\n"
 			}
