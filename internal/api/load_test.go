@@ -61,14 +61,24 @@ func TestNodeAllocGPUs(t *testing.T) {
 			want: 8,
 		},
 		{
-			name: "from alloc_tres fallback",
-			node: NodeInfo{AllocGres: "", AllocTRES: "cpu=64,mem=1216G,gres/gpu=3,gres/gpu:l40s=3"},
+			name: "from gres_used",
+			node: NodeInfo{GresUsed: "gpu:l40s:3(IDX:0-2),tmpsize:21474836480"},
+			want: 3,
+		},
+		{
+			name: "from tres_used fallback",
+			node: NodeInfo{TresUsed: "cpu=64,mem=1216G,gres/gpu=3,gres/gpu:l40s=3"},
 			want: 3,
 		},
 		{
 			name: "alloc_gres preferred",
-			node: NodeInfo{AllocGres: "gpu:2", AllocTRES: "gres/gpu=5"},
+			node: NodeInfo{AllocGres: "gpu:2", GresUsed: "gpu:5", TresUsed: "gres/gpu=9"},
 			want: 2,
+		},
+		{
+			name: "gres_used before tres",
+			node: NodeInfo{GresUsed: "gpu:4", TresUsed: "gres/gpu=7"},
+			want: 4,
 		},
 		{
 			name: "no gpu",

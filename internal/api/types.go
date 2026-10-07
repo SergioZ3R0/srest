@@ -165,8 +165,9 @@ type NodeInfo struct {
 	AllocMemory int64      `json:"alloc_memory"` // MB
 	Partitions  StringList `json:"partitions"`
 	Gres        string     `json:"gres"`
+	GresUsed    string     `json:"gres_used"`
 	AllocGres   string     `json:"alloc_gres"`
-	AllocTRES   string     `json:"alloc_tres"`
+	TresUsed    string     `json:"tres_used"`
 }
 
 // PartitionInfo is a Slurm partition as returned by GET /slurm/vX/partitions.

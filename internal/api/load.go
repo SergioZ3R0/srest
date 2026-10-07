@@ -120,11 +120,14 @@ func ParseTRESGPU(s string) int {
 	return 0
 }
 
-// NodeAllocGPUs returns the allocated GPU count for a node, preferring
-// alloc_gres and falling back to alloc_tres.
+// NodeAllocGPUs returns the allocated GPU count for a node.
+// Tries alloc_gres, then gres_used, then tres_used.
 func NodeAllocGPUs(n NodeInfo) int {
 	if count := ParseGRESCount(n.AllocGres); count > 0 {
 		return count
 	}
-	return ParseTRESGPU(n.AllocTRES)
+	if count := ParseGRESCount(n.GresUsed); count > 0 {
+		return count
+	}
+	return ParseTRESGPU(n.TresUsed)
 }
