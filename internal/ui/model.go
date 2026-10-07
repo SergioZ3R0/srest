@@ -97,6 +97,7 @@ func New(client *api.Client, appVersion string) Model {
 		appVersion: appVersion,
 		tabs:       []string{"Dashboard", "Jobs", "Nodes", "Partitions", "Query"},
 		active:     0,
+		queryFocus: focusSidebar,
 		jobs:       newJobsTable(),
 		nodes:      newNodesTable(),
 		partitions: newPartitionsTable(),
@@ -692,7 +693,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case editorDoneMsg:
 		if msg.err == nil {
 			// Set the script parameter value from the edited file.
-			ep := &endpoints[m.composer.active]
+			ep := m.composer.currentEndpoint()
 			for i := range ep.params {
 				if ep.params[i].name == "script" {
 					ep.params[i].value = msg.content
@@ -762,7 +763,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleSearchKey(msg)
 		}
 
-		// Tab navigation available from every tab (including Query).
+		// Query tab: handle keys via handleQueryTabKey FIRST.
+		// This ensures edit-mode inputs get all keys before global handlers.
+		if m.active == 4 {
+			return m.handleQueryTabKey(msg)
+		}
+
+		// Tab navigation available from every tab (NOT Query - handled above).
 		switch msg.String() {
 		case "esc":
 			m.active = 0
@@ -778,16 +785,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "ctrl+o":
 			// Toggle About modal (only when not editing text fields).
-			if m.active != 4 || !m.composer.editing {
+			if !m.composer.editing {
 				m.showAbout = !m.showAbout
 				return m, nil
 			}
-		}
-
-		// Query tab: remaining keys (arrows, numbers, letters) drive the
-		// composer and its panels.
-		if m.active == 4 {
-			return m.handleQueryTabKey(msg)
 		}
 
 		// Delegate remaining keys to the active panel (table). Arrows here
@@ -929,25 +930,48 @@ func (m *Model) layout() {
 		panel = 30
 	}
 
-	// Split the Query tab vertical space between composer (60%) and history.
-	queryH := h - 2
-	if queryH < 4 {
-		queryH = 4
+	// Query tab uses full available height.
+	queryH := h
+	if queryH < 6 {
+		queryH = 6
 	}
-	composerBudget := int(float64(queryH) * 0.6)
-	if composerBudget < 2 {
-		composerBudget = 2
+	// Composer (top row) gets 55%, raw gets 15%, history gets the rest.
+	composerBudget := int(float64(queryH) * 0.55)
+	if composerBudget < 4 {
+		composerBudget = 4
 	}
-	leftW := int(float64(panel) * 0.55)
-	rightW := panel - leftW
+	rawBudget := int(float64(queryH) * 0.15)
+	if rawBudget < 2 {
+		rawBudget = 2
+	}
+
+	// Sidebar + builder + output layout. Sidebar is wider to avoid cutoff.
+	sidebarW := 24
+	if panel < 100 {
+		sidebarW = 20
+	}
+	if panel < 70 {
+		sidebarW = 16
+	}
+	remaining := panel - sidebarW
+	leftW := remaining/2 - 1
+	rightW := remaining - leftW - 2
+	if leftW < 20 {
+		leftW = 20
+	}
+	if rightW < 20 {
+		rightW = 20
+	}
+	m.composer.sidebar.Width = sidebarW
+	m.composer.sidebar.Height = composerBudget - 2
 	m.composer.builder.Width = leftW
-	m.composer.builder.Height = composerBudget
+	m.composer.builder.Height = composerBudget - 2
 	m.composer.output.Width = rightW
-	m.composer.output.Height = composerBudget
+	m.composer.output.Height = composerBudget - 2
 	m.composer.rebuild()
 
 	m.queryVP.Width = panel
-	m.queryVP.Height = queryH - composerBudget - 5
+	m.queryVP.Height = queryH - composerBudget - rawBudget - 4
 	if m.queryVP.Height < 1 {
 		m.queryVP.Height = 1
 	}
@@ -969,6 +993,7 @@ const (
 	focusResponse
 	focusHistory
 	focusRaw
+	focusSidebar
 )
 
 // rawRunCmd issues a request with a manually written/typed path and reuses
@@ -982,22 +1007,78 @@ func rawRunCmd(c *api.Client, path string) tea.Cmd {
 }
 
 // handleQueryTabKey routes keys within the Query tab based on the focused
-// panel. 'f' cycles focus; 'r' runs the built request from anywhere.
+// panel. 'f' cycles focus forward, 'F' (shift+f) cycles backward;
+// 'r' runs the built request from anywhere.
 func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// When raw input is in edit mode, ALL keys go to the input.
+	if m.queryFocus == focusRaw && m.rawInput.Focused() {
+		switch msg.String() {
+		case "esc":
+			m.rawInput.Blur()
+			return m, nil
+		case "enter":
+			path := strings.TrimSpace(m.rawInput.Value())
+			if path == "" {
+				m.rawInput.Blur()
+				return m, nil
+			}
+			m.rawInput.Blur()
+			return m, rawRunCmd(m.client, path)
+		}
+		var cmd tea.Cmd
+		m.rawInput, cmd = m.rawInput.Update(msg)
+		return m, cmd
+	}
+
+	// When raw input is NOT editing: f/F/r work as focus/run keys.
+	if m.queryFocus == focusRaw {
+		switch msg.String() {
+		case "enter":
+			m.rawInput.Focus()
+			return m, nil
+		case "f":
+			m.queryFocus = (m.queryFocus + 1) % 5
+			m.syncFocus()
+			return m, nil
+		case "F":
+			m.queryFocus = (m.queryFocus - 1 + 5) % 5
+			m.syncFocus()
+			return m, nil
+		case "r":
+			return m, m.composer.run(m.client)
+		}
+		return m, nil
+	}
+
+	// Global keys for all other panels.
 	switch msg.String() {
 	case "f":
-		m.queryFocus = (m.queryFocus + 1) % 4
-		if m.queryFocus == focusRaw {
-			m.rawInput.Focus()
-		} else {
-			m.rawInput.Blur()
-		}
+		m.queryFocus = (m.queryFocus + 1) % 5
+		m.syncFocus()
+		return m, nil
+	case "F":
+		m.queryFocus = (m.queryFocus - 1 + 5) % 5
+		m.syncFocus()
 		return m, nil
 	case "r":
 		return m, m.composer.run(m.client)
+	case "tab", "]":
+		m.active = (m.active + 1) % len(m.tabs)
+		m.focusTab()
+		return m, nil
+	case "shift+tab", "[":
+		m.active = (m.active - 1 + len(m.tabs)) % len(m.tabs)
+		m.focusTab()
+		return m, nil
+	case "esc":
+		m.active = 0
+		m.focusTab()
+		return m, nil
 	}
 
 	switch m.queryFocus {
+	case focusSidebar:
+		return m.handleSidebarKey(msg)
 	case focusBuilder:
 		var cmd tea.Cmd
 		m.composer, cmd = m.composer.Update(msg)
@@ -1008,41 +1089,95 @@ func (m Model) handleQueryTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case focusHistory:
 		m.queryVP, _ = m.queryVP.Update(msg)
 		return m, nil
-	case focusRaw:
-		if msg.String() == "enter" {
-			path := strings.TrimSpace(m.rawInput.Value())
-			if path == "" {
-				return m, nil
-			}
-			return m, rawRunCmd(m.client, path)
-		}
-		var cmd tea.Cmd
-		m.rawInput, cmd = m.rawInput.Update(msg)
-		return m, cmd
 	}
 	return m, nil
 }
 
-// queryTabView renders the Query tab: builder and output side by side, with
-// the request history below. The focused panel is highlighted.
+// syncFocus updates input focus based on queryFocus state.
+func (m *Model) syncFocus() {
+	// Raw input manages its own focus via edit mode; don't blur it here
+	// when switching to raw. Only blur when leaving raw entirely.
+	if m.queryFocus != focusRaw {
+		m.rawInput.Blur()
+	}
+}
+
+// handleSidebarKey processes keys when the sidebar is focused.
+func (m Model) handleSidebarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "up", "k":
+		idx := m.composer.endpointIdx - 1
+		if idx < 0 {
+			// Wrap to previous category's last endpoint.
+			prevCat := (m.composer.categoryIdx - 1 + len(categories)) % len(categories)
+			m.composer.selectCategory(prevCat)
+			m.composer.selectEndpoint(len(categories[prevCat].endpoints) - 1)
+			return m, nil
+		}
+		m.composer.selectEndpoint(idx)
+	case "down", "j":
+		eps := m.composer.currentCategory().endpoints
+		idx := m.composer.endpointIdx + 1
+		if idx >= len(eps) {
+			// Wrap to next category's first endpoint.
+			nextCat := (m.composer.categoryIdx + 1) % len(categories)
+			m.composer.selectCategory(nextCat)
+			m.composer.selectEndpoint(0)
+			return m, nil
+		}
+		m.composer.selectEndpoint(idx)
+	case "tab", "]":
+		m.composer.selectCategory((m.composer.categoryIdx + 1) % len(categories))
+	case "shift+tab", "[":
+		m.composer.selectCategory((m.composer.categoryIdx - 1 + len(categories)) % len(categories))
+	}
+	return m, nil
+}
+
+// queryTabView renders the Query tab: sidebar + builder + output side by side,
+// with the request history below. The focused panel is highlighted.
 func (m Model) queryTabView(width int) string {
 	panel := width - 4
-	if panel < 30 {
-		panel = 30
+	if panel < 40 {
+		panel = 40
 	}
-	leftW := int(float64(panel) * 0.55)
-	rightW := panel - leftW
 
+	sidebarW := 24
+	if panel < 100 {
+		sidebarW = 20
+	}
+	if panel < 70 {
+		sidebarW = 16
+	}
+	remaining := panel - sidebarW
+	// Builder and output split remaining space evenly with small gutter.
+	leftW := remaining/2 - 1
+	rightW := remaining - leftW - 2
+	if leftW < 20 {
+		leftW = 20
+	}
+	if rightW < 20 {
+		rightW = 20
+	}
+
+	sidebar := focusedPanel(m.queryFocus == focusSidebar, composerPanelStyle).Width(sidebarW).Render(
+		panelTitleStyle.Render("Endpoints") + "\n" + m.composer.sidebar.View(),
+	)
 	builder := focusedPanel(m.queryFocus == focusBuilder, composerPanelStyle).Width(leftW).Render(
 		panelTitleStyle.Render("Builder") + "\n" + m.composer.builder.View(),
 	)
-	output := focusedPanel(m.queryFocus == focusResponse, outputPanelStyle).Width(rightW).Render(
+	output := focusedPanel(m.queryFocus == focusResponse, composerPanelStyle).Width(rightW).Render(
 		panelTitleStyle.Render("Response") + "\n" + m.composer.output.View(),
 	)
-	top := lipgloss.JoinHorizontal(lipgloss.Top, builder, output)
+	top := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, builder, output)
 
+	// Custom query panel with edit mode indicator.
+	rawTitle := "Custom query"
+	if m.queryFocus == focusRaw && m.rawInput.Focused() {
+		rawTitle = "Custom query [editing - esc to exit, enter to run]"
+	}
 	raw := focusedPanel(m.queryFocus == focusRaw, historyPanelStyle).Width(panel).Render(
-		panelTitleStyle.Render("Custom query") + "\n" +
+		panelTitleStyle.Render(rawTitle) + "\n" +
 			searchStyle.Render("Path: "+m.rawInput.View()),
 	)
 

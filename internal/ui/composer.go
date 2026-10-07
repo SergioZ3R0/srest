@@ -17,94 +17,25 @@ import (
 	"github.com/SergioZ3R0/srest/internal/api"
 )
 
-// param is a single editable query parameter for an endpoint. options holds
-// selectable values (static or gathered from the cluster); when present they
-// can be cycled with the left/right keys.
-type param struct {
-	name    string
-	value   string
-	options []string
-}
-
 // composerRunMsg is returned after the composer executes a request.
 type composerRunMsg struct {
 	err   error
 	jobID uint32
 }
 
-// endpoint describes a Slurm API endpoint and its supported query parameters.
-// base is the API family: "slurm" (slurmctld) or "slurmdb" (accounting).
-type endpoint struct {
-	name   string
-	method string
-	base   string
-	path   string
-	params []param
-}
-
-// endpoints defines the Slurm REST endpoints exposed by the composer and the
-// query parameters each one accepts (taken from the OpenAPI spec of the
-// cluster). ping is first so it is selected by default. "get jobs" targets the
-// slurmdb API with rich filters. "submit jobs" sends a POST with the form
-// fields as body.
-var endpoints = []endpoint{
-	{
-		name:   "ping",
-		method: "GET",
-		base:   "slurm",
-		path:   "/ping",
-		params: []param{},
-	},
-	{
-		name:   "get jobs",
-		method: "GET",
-		base:   "slurmdb",
-		path:   "/jobs",
-		params: []param{
-			{name: "state", options: []string{"RUNNING", "PENDING", "COMPLETED", "FAILED", "CANCELLED", "TIMEOUT"}},
-			{name: "account"},
-			{name: "partition"},
-			{name: "qos"},
-			{name: "node"},
-			{name: "users"},
-		},
-	},
-	{
-		name:   "submit jobs",
-		method: "POST",
-		base:   "slurm",
-		path:   "/job/submit",
-		params: []param{
-			{name: "name"},
-			{name: "partition"},
-			{name: "qos"},
-			{name: "account"},
-			{name: "gres"},
-			{name: "time_limit", value: "60"},
-			{name: "nodes", value: "1"},
-			{name: "cpus_per_task", value: "1"},
-			{name: "memory_per_node"},
-			{name: "standard_output"},
-			{name: "standard_error"},
-			{name: "current_working_directory", value: "/tmp"},
-			{name: "script_path"},
-			{name: "script", value: "#!/bin/bash\nhostname"},
-		},
-	},
-}
-
-// composer is the visual query builder state. The builder (endpoints, URL,
-// params) and the response output live in separate scrollable viewports.
+// composer is the visual query builder state with sidebar navigation.
 type composer struct {
-	active  int
-	cursor  int
-	editing bool
-	input   textinput.Model
-	status  string
-	body    string
-	version api.Version
-	builder viewport.Model
-	output  viewport.Model
+	categoryIdx int
+	endpointIdx int
+	cursor      int
+	editing     bool
+	input       textinput.Model
+	status      string
+	body        string
+	version     api.Version
+	sidebar     viewport.Model
+	builder     viewport.Model
+	output      viewport.Model
 }
 
 func newComposer() composer {
@@ -114,9 +45,20 @@ func newComposer() composer {
 
 	return composer{
 		input:   ti,
+		sidebar: viewport.New(0, 0),
 		builder: viewport.New(0, 0),
 		output:  viewport.New(0, 0),
 	}
+}
+
+// currentCategory returns the active category.
+func (c composer) currentCategory() category {
+	return categories[c.categoryIdx]
+}
+
+// currentEndpoint returns the active endpoint.
+func (c composer) currentEndpoint() endpoint {
+	return c.currentCategory().endpoints[c.endpointIdx]
 }
 
 // setVersion records the detected API version used to build request paths.
@@ -125,21 +67,29 @@ func (c *composer) setVersion(v api.Version) {
 	c.rebuild()
 }
 
-// builtPath returns the full request path (with API family prefix and query
-// parameters). For POST endpoints, only the base path is returned since
-// parameters are sent as the request body.
+// builtPath returns the full request path with path params substituted and
+// query params appended.
 func (c composer) builtPath() string {
-	ep := endpoints[c.active]
+	ep := c.currentEndpoint()
 
-	if ep.method == "POST" {
-		if ep.base == "slurmdb" {
-			return "/slurmdb/" + c.version.String() + ep.path
+	// Substitute path parameters.
+	path := ep.path
+	for _, p := range ep.pathParams() {
+		if p.value != "" {
+			path = strings.Replace(path, "{"+p.name+"}", p.value, 1)
 		}
-		return ep.path
 	}
 
+	if ep.method == "POST" || ep.method == "DELETE" {
+		if ep.base == "slurmdb" {
+			return "/slurmdb/" + c.version.String() + path
+		}
+		return path
+	}
+
+	// Build query string from query params.
 	parts := []string{}
-	for _, p := range ep.params {
+	for _, p := range ep.getParams() {
 		if p.value != "" {
 			parts = append(parts, p.name+"="+p.value)
 		}
@@ -149,20 +99,21 @@ func (c composer) builtPath() string {
 		q = "?" + strings.Join(parts, "&")
 	}
 	if ep.base == "slurmdb" {
-		return "/slurmdb/" + c.version.String() + ep.path + q
+		return "/slurmdb/" + c.version.String() + path + q
 	}
-	return ep.path + q
+	return path + q
 }
 
-// rebuild regenerates both viewports from the current state.
+// rebuild regenerates all viewports from the current state.
 func (c *composer) rebuild() {
+	c.sidebar.SetContent(c.renderSidebar())
 	c.builder.SetContent(c.renderBuilder())
 	c.output.SetContent(c.renderOutput())
 }
 
 // ensureCursorVisible scrolls the builder so the selected parameter is shown.
 func (c *composer) ensureCursorVisible() {
-	// Layout: line 0 = endpoints, line 1 = URL, params start at line 2.
+	// Layout: line 0 = method+URL, line 1 = blank, params start at line 2.
 	line := 2 + c.cursor
 	y := line - c.builder.Height/2
 	if y < 0 {
@@ -171,18 +122,35 @@ func (c *composer) ensureCursorVisible() {
 	c.builder.SetYOffset(y)
 }
 
-// selectEndpoint switches the active endpoint and resets the cursor.
+// selectEndpoint switches the active endpoint within the current category.
 func (c *composer) selectEndpoint(i int) {
-	c.active = i
-	c.cursor = 0
-	c.editing = false
-	c.status = ""
-	c.rebuild()
+	eps := c.currentCategory().endpoints
+	if i >= 0 && i < len(eps) {
+		c.endpointIdx = i
+		c.cursor = 0
+		c.editing = false
+		c.status = ""
+		c.rebuild()
+		c.ensureSidebarVisible()
+	}
+}
+
+// selectCategory switches the active category and resets endpoint selection.
+func (c *composer) selectCategory(i int) {
+	if i >= 0 && i < len(categories) {
+		c.categoryIdx = i
+		c.endpointIdx = 0
+		c.cursor = 0
+		c.editing = false
+		c.status = ""
+		c.rebuild()
+		c.ensureSidebarVisible()
+	}
 }
 
 // move moves the param cursor by delta, respecting bounds.
 func (c *composer) move(delta int) {
-	ep := endpoints[c.active]
+	ep := c.currentEndpoint()
 	if len(ep.params) == 0 {
 		return
 	}
@@ -193,8 +161,8 @@ func (c *composer) move(delta int) {
 
 // startEdit focuses the text input on the selected parameter.
 func (c *composer) startEdit() {
-	ep := endpoints[c.active]
-	if len(ep.params) == 0 {
+	ep := c.currentEndpoint()
+	if len(ep.params) == 0 || c.cursor >= len(ep.params) {
 		return
 	}
 	c.input.SetValue(ep.params[c.cursor].value)
@@ -207,8 +175,8 @@ func (c *composer) stopEdit() {
 	if !c.editing {
 		return
 	}
-	ep := endpoints[c.active]
-	if len(ep.params) > 0 {
+	ep := c.currentEndpoint()
+	if c.cursor < len(ep.params) {
 		ep.params[c.cursor].value = c.input.Value()
 	}
 	c.editing = false
@@ -217,18 +185,17 @@ func (c *composer) stopEdit() {
 
 // clearValue empties the selected parameter's value.
 func (c *composer) clearValue() {
-	ep := endpoints[c.active]
-	if len(ep.params) == 0 {
-		return
+	ep := c.currentEndpoint()
+	if c.cursor < len(ep.params) {
+		ep.params[c.cursor].value = ""
+		c.rebuild()
 	}
-	ep.params[c.cursor].value = ""
-	c.rebuild()
 }
 
 // cycleOption moves the selected parameter's value through its options.
 func (c *composer) cycleOption(delta int) {
-	ep := endpoints[c.active]
-	if len(ep.params) == 0 {
+	ep := c.currentEndpoint()
+	if c.cursor >= len(ep.params) {
 		return
 	}
 	p := &ep.params[c.cursor]
@@ -247,13 +214,21 @@ func (c *composer) cycleOption(delta int) {
 	c.rebuild()
 }
 
+// hasOptionsAtCursor reports whether the selected parameter offers options.
+func (c composer) hasOptionsAtCursor() bool {
+	ep := c.currentEndpoint()
+	return c.cursor < len(ep.params) && len(ep.params[c.cursor].options) > 0
+}
+
 // setPartitionOptions feeds the partitions gathered from the cluster into the
 // "partition" parameter of every endpoint that has one.
 func (c *composer) setPartitionOptions(names []string) {
-	for i := range endpoints {
-		for j := range endpoints[i].params {
-			if endpoints[i].params[j].name == "partition" {
-				endpoints[i].params[j].options = names
+	for ci := range categories {
+		for ei := range categories[ci].endpoints {
+			for j := range categories[ci].endpoints[ei].params {
+				if categories[ci].endpoints[ei].params[j].name == "partition" {
+					categories[ci].endpoints[ei].params[j].options = names
+				}
 			}
 		}
 	}
@@ -261,12 +236,14 @@ func (c *composer) setPartitionOptions(names []string) {
 }
 
 // setAccountOptions feeds the accounts gathered from the cluster into the
-// "account" parameter of the jobs endpoint.
+// "account" parameter of every endpoint that has one.
 func (c *composer) setAccountOptions(names []string) {
-	for i := range endpoints {
-		for j := range endpoints[i].params {
-			if endpoints[i].params[j].name == "account" {
-				endpoints[i].params[j].options = names
+	for ci := range categories {
+		for ei := range categories[ci].endpoints {
+			for j := range categories[ci].endpoints[ei].params {
+				if categories[ci].endpoints[ei].params[j].name == "account" {
+					categories[ci].endpoints[ei].params[j].options = names
+				}
 			}
 		}
 	}
@@ -274,12 +251,14 @@ func (c *composer) setAccountOptions(names []string) {
 }
 
 // setQoSOptions feeds the QoS gathered from the cluster into the
-// "qos" parameter of the jobs endpoint.
+// "qos" parameter of every endpoint that has one.
 func (c *composer) setQoSOptions(names []string) {
-	for i := range endpoints {
-		for j := range endpoints[i].params {
-			if endpoints[i].params[j].name == "qos" {
-				endpoints[i].params[j].options = names
+	for ci := range categories {
+		for ei := range categories[ci].endpoints {
+			for j := range categories[ci].endpoints[ei].params {
+				if categories[ci].endpoints[ei].params[j].name == "qos" {
+					categories[ci].endpoints[ei].params[j].options = names
+				}
 			}
 		}
 	}
@@ -289,10 +268,12 @@ func (c *composer) setQoSOptions(names []string) {
 // setGresOptions feeds the GRES gathered from the nodes into the
 // "gres" parameter of the submit jobs endpoint.
 func (c *composer) setGresOptions(names []string) {
-	for i := range endpoints {
-		for j := range endpoints[i].params {
-			if endpoints[i].params[j].name == "gres" {
-				endpoints[i].params[j].options = names
+	for ci := range categories {
+		for ei := range categories[ci].endpoints {
+			for j := range categories[ci].endpoints[ei].params {
+				if categories[ci].endpoints[ei].params[j].name == "gres" {
+					categories[ci].endpoints[ei].params[j].options = names
+				}
 			}
 		}
 	}
@@ -304,57 +285,96 @@ func (c composer) run(client *api.Client) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		ep := endpoints[c.active]
+		ep := c.currentEndpoint()
 
-		// POST endpoints: build body from params.
-		if ep.method == "POST" {
-			// Submit jobs wraps fields in a "job" object per the OpenAPI spec.
-			if ep.path == "/job/submit" {
-				jobFields := make(map[string]any)
-				for _, p := range ep.params {
-					if p.value == "" || p.name == "script" || p.name == "script_path" {
-						continue
-					}
-					switch p.name {
-					case "time_limit", "nodes", "cpus_per_task", "memory_per_node":
-						if v, err := strconv.Atoi(p.value); err == nil {
-							jobFields[p.name] = v
-						}
-					default:
-						jobFields[p.name] = p.value
-					}
+		// Handle submit job specially.
+		if ep.path == "/job/submit" && ep.method == "POST" {
+			jobFields := make(map[string]any)
+			for _, p := range ep.params {
+				if p.value == "" || p.name == "script" || p.name == "script_path" {
+					continue
 				}
-
-				// Environment is required for job submission; default to PATH.
-				if _, ok := jobFields["environment"]; !ok {
-					jobFields["environment"] = []string{"PATH=/usr/bin:/bin"}
-				}
-
-				body := map[string]any{"job": jobFields}
-
-				// If script_path is set, read the file and use its contents as script.
-				for _, p := range ep.params {
-					if p.name == "script_path" && p.value != "" {
-						data, err := os.ReadFile(p.value)
-						if err != nil {
-							return composerRunMsg{err: fmt.Errorf("reading script: %w", err)}
-						}
-						body["script"] = string(data)
+				switch p.name {
+				case "time_limit", "nodes", "cpus_per_task", "memory_per_node":
+					if v, err := strconv.Atoi(p.value); err == nil {
+						jobFields[p.name] = v
 					}
-					if p.name == "script" && p.value != "" {
-						body["script"] = p.value
-					}
+				default:
+					jobFields[p.name] = p.value
 				}
-
-				result, err := client.SubmitJob(ctx, body)
-				if err != nil {
-					return composerRunMsg{err: err}
-				}
-				return composerRunMsg{jobID: result.JobID}
 			}
-			return composerRunMsg{err: fmt.Errorf("unsupported POST endpoint: %s", ep.path)}
+			if _, ok := jobFields["environment"]; !ok {
+				jobFields["environment"] = []string{"PATH=/usr/bin:/bin"}
+			}
+			body := map[string]any{"job": jobFields}
+			for _, p := range ep.params {
+				if p.name == "script_path" && p.value != "" {
+					data, err := os.ReadFile(p.value)
+					if err != nil {
+						return composerRunMsg{err: fmt.Errorf("reading script: %w", err)}
+					}
+					body["script"] = string(data)
+				}
+				if p.name == "script" && p.value != "" {
+					body["script"] = p.value
+				}
+			}
+			result, err := client.SubmitJob(ctx, body)
+			if err != nil {
+				return composerRunMsg{err: err}
+			}
+			return composerRunMsg{jobID: result.JobID}
 		}
 
+		// Handle job action (cancel, requeue, hold, release).
+		if ep.method == "POST" && strings.Contains(ep.path, "/job/{job_id}") {
+			var jobID uint32
+			var action string
+			for _, p := range ep.params {
+				if p.name == "job_id" && p.value != "" {
+					_, _ = fmt.Sscanf(p.value, "%d", &jobID)
+				}
+				if p.name == "action" && p.value != "" {
+					action = p.value
+				}
+			}
+			if jobID == 0 || action == "" {
+				return composerRunMsg{err: fmt.Errorf("job_id and action are required")}
+			}
+			var err error
+			switch action {
+			case "CANCEL":
+				err = client.CancelJob(ctx, jobID)
+			case "REQUEUE":
+				err = client.RequeueJob(ctx, jobID)
+			default:
+				err = fmt.Errorf("unsupported action: %s", action)
+			}
+			if err != nil {
+				return composerRunMsg{err: err}
+			}
+			return composerRunMsg{}
+		}
+
+		// Handle delete job.
+		if ep.method == "DELETE" && strings.Contains(ep.path, "/job/{job_id}") {
+			var jobID uint32
+			for _, p := range ep.params {
+				if p.name == "job_id" && p.value != "" {
+					_, _ = fmt.Sscanf(p.value, "%d", &jobID)
+				}
+			}
+			if jobID == 0 {
+				return composerRunMsg{err: fmt.Errorf("job_id is required")}
+			}
+			err := client.CancelJob(ctx, jobID)
+			if err != nil {
+				return composerRunMsg{err: err}
+			}
+			return composerRunMsg{}
+		}
+
+		// Generic GET request.
 		return composerRunMsg{err: client.Get(ctx, c.builtPath(), nil)}
 	}
 }
@@ -369,6 +389,10 @@ func fieldLabel(name string) string {
 		"time_limit":                "wall",
 		"nodes":                     "nodes",
 		"current_working_directory": "cwd",
+		"account_name":              "account",
+		"cluster_name":              "cluster",
+		"node_name":                 "node",
+		"parent_account":            "parent",
 	}
 	if l, ok := labels[name]; ok {
 		return l
@@ -385,8 +409,7 @@ func (c *composer) setResult(status, body string) {
 }
 
 // openEditorCmd returns a tea.Cmd that opens the default editor on a temp
-// file containing the current script. When the editor closes, the file
-// contents are read back into the script parameter.
+// file containing the current script.
 func openEditorCmd(script string) tea.Cmd {
 	return tea.ExecProcess(exec.Command(
 		os.Getenv("EDITOR"),
@@ -404,28 +427,81 @@ type editorDoneMsg struct {
 	err     error
 }
 
-// renderBuilder builds the left panel (endpoints, URL, params, hints).
+// renderSidebar builds the left sidebar with categories and their endpoints.
+func (c composer) renderSidebar() string {
+	var sb strings.Builder
+
+	catStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true).Padding(0, 1)
+	catActive := lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Background(lipgloss.Color("57")).Bold(true).Padding(0, 1)
+	epStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("7")).Padding(0, 0, 0, 2)
+	epActive := lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Background(lipgloss.Color("57")).Padding(0, 0, 0, 2)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+
+	for ci, cat := range categories {
+		if ci == c.categoryIdx {
+			sb.WriteString(catActive.Render("> "+cat.name) + "\n")
+		} else {
+			sb.WriteString(catStyle.Render("  "+cat.name) + "\n")
+		}
+		for ei, ep := range cat.endpoints {
+			if ci == c.categoryIdx && ei == c.endpointIdx {
+				sb.WriteString(epActive.Render("• "+ep.name) + "\n")
+			} else if ci == c.categoryIdx {
+				sb.WriteString(epStyle.Render("  "+ep.name) + "\n")
+			} else {
+				sb.WriteString(dimStyle.Render("    "+ep.name) + "\n")
+			}
+		}
+	}
+	return sb.String()
+}
+
+// sidebarLine returns the 0-based line number of the selected endpoint in the
+// sidebar content. Each category header is 1 line, each endpoint is 1 line.
+func (c composer) sidebarLine() int {
+	line := 0
+	for ci, cat := range categories {
+		line++ // category header
+		if ci == c.categoryIdx {
+			return line + c.endpointIdx
+		}
+		line += len(cat.endpoints)
+	}
+	return line
+}
+
+// ensureSidebarVisible scrolls the sidebar viewport to keep the selected
+// endpoint visible.
+func (c *composer) ensureSidebarVisible() {
+	line := c.sidebarLine()
+	h := c.sidebar.Height
+	if h <= 0 {
+		return
+	}
+	y := c.sidebar.YOffset
+	if line < y {
+		c.sidebar.SetYOffset(line)
+	} else if line >= y+h {
+		c.sidebar.SetYOffset(line - h + 1)
+	}
+}
+
+// renderBuilder builds the params panel for the selected endpoint.
 func (c composer) renderBuilder() string {
 	var sb strings.Builder
 
-	var eps []string
-	for i, ep := range endpoints {
-		if i == c.active {
-			eps = append(eps, composerEndpointActive.Render(ep.name))
-		} else {
-			eps = append(eps, composerEndpoint.Render(ep.name))
-		}
-	}
-	sb.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, eps...) + "\n")
-	sb.WriteString(composerURL.Render(c.method()+" "+c.builtPath()) + "\n")
+	ep := c.currentEndpoint()
+	methodStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
+	pathStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 
-	ep := endpoints[c.active]
-	if len(ep.params) == 0 {
-		sb.WriteString(detailStyle.Render("No query parameters for this endpoint.") + "\n")
+	sb.WriteString(methodStyle.Render(ep.method) + " " + pathStyle.Render(c.builtPath()) + "\n\n")
+
+	params := ep.params
+	if len(params) == 0 {
+		sb.WriteString(detailStyle.Render("No parameters for this endpoint.") + "\n")
 	} else {
-		// Calculate max label width so all labels align.
 		maxLabel := 0
-		for _, p := range ep.params {
+		for _, p := range params {
 			l := len(fieldLabel(p.name))
 			if l > maxLabel {
 				maxLabel = l
@@ -433,13 +509,22 @@ func (c composer) renderBuilder() string {
 		}
 		nameStyle := lipgloss.NewStyle().Width(maxLabel).Foreground(lipgloss.Color("12"))
 
-		for i, p := range ep.params {
+		for i, p := range params {
 			label := fieldLabel(p.name)
 			var row string
 			if c.editing && i == c.cursor {
 				row = nameStyle.Render(label) + "  " + c.input.View()
 			} else {
-				row = nameStyle.Render(label) + "  " + composerParamValue.Render(p.value)
+				valueStyle := composerParamValue
+				if p.kind == paramPath {
+					valueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+				}
+				value := p.value
+				if value == "" && p.kind == paramPath {
+					value = "{" + p.name + "}"
+					valueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+				}
+				row = nameStyle.Render(label) + "  " + valueStyle.Render(value)
 			}
 			if i == c.cursor && !c.editing {
 				row = composerParamCursor.Render(row)
@@ -448,11 +533,15 @@ func (c composer) renderBuilder() string {
 		}
 	}
 
-	sb.WriteString(composerHint.Render("enter=edit e=editor ←/→=option ↑/↓=nav del=clear f=focus 1-3=endpoint r=run") + "\n")
+	hint := "↑/↓=nav enter=edit ←/→=option del=clear r=run"
+	if c.categoryIdx == 0 {
+		hint += "  tab/]=next category"
+	}
+	sb.WriteString(composerHint.Render(hint) + "\n")
 	return sb.String()
 }
 
-// renderOutput builds the right panel (status line + response body).
+// renderOutput builds the response panel.
 func (c composer) renderOutput() string {
 	var sb strings.Builder
 	if c.status != "" {
@@ -489,14 +578,12 @@ func (c composer) Update(msg tea.KeyMsg) (composer, tea.Cmd) {
 	case "delete", "backspace", "x":
 		c.clearValue()
 	case "e":
-		// Open editor for the script parameter.
-		ep := endpoints[c.active]
-		if len(ep.params) > 0 && c.cursor < len(ep.params) && ep.params[c.cursor].name == "script" {
-			return c, openEditorCmd(ep.params[c.cursor].value)
+		ep := c.currentEndpoint()
+		params := ep.getParams()
+		if len(params) > 0 && c.cursor < len(params) && params[c.cursor].name == "script" {
+			return c, openEditorCmd(params[c.cursor].value)
 		}
 	case "left", "h":
-		// Only cycle the selected parameter's options; endpoint switching is
-		// done with the number keys.
 		if c.hasOptionsAtCursor() {
 			c.cycleOption(-1)
 		}
@@ -506,22 +593,10 @@ func (c composer) Update(msg tea.KeyMsg) (composer, tea.Cmd) {
 		}
 	case "pgup", "pgdown", "home", "end":
 		c.output, _ = c.output.Update(msg)
-	case "1":
-		c.selectEndpoint(0)
-	case "2":
-		c.selectEndpoint(1)
-	case "3":
-		c.selectEndpoint(2)
+	case "tab", "]":
+		c.selectCategory((c.categoryIdx + 1) % len(categories))
+	case "shift+tab", "[":
+		c.selectCategory((c.categoryIdx - 1 + len(categories)) % len(categories))
 	}
 	return c, nil
-}
-
-// hasOptionsAtCursor reports whether the selected parameter offers options.
-func (c composer) hasOptionsAtCursor() bool {
-	ep := endpoints[c.active]
-	return len(ep.params) > 0 && len(ep.params[c.cursor].options) > 0
-}
-
-func (c composer) method() string {
-	return endpoints[c.active].method
 }
