@@ -63,10 +63,12 @@ func ComputePartitionLoads(nodes []NodeInfo) []PartitionLoad {
 // ParseGRESCount extracts the GPU count from a GRES string.
 // Supported formats:
 //
-//	""            → 0
-//	"gpu:4"       → 4
-//	"gpu:a100:4"  → 4
-//	"gpu:4,gpu:2" → 6  (summed)
+//	""                       → 0
+//	"gpu:4"                  → 4
+//	"gpu:a100:4"             → 4
+//	"gpu:4,gpu:2"            → 6  (summed)
+//	"gpu:b200:8(S:0-1)"      → 8  (suffix stripped)
+//	"gpu:b200:8(IDX:0-7)"    → 8  (suffix stripped)
 func ParseGRESCount(s string) int {
 	if s == "" {
 		return 0
@@ -77,6 +79,10 @@ func ParseGRESCount(s string) int {
 		part = strings.TrimSpace(part)
 		if !strings.HasPrefix(part, "gpu") {
 			continue
+		}
+		// Strip suffix like "(S:0-1)" or "(IDX:0-7)".
+		if idx := strings.Index(part, "("); idx >= 0 {
+			part = part[:idx]
 		}
 		fields := strings.Split(part, ":")
 		// The last field is always the count.
