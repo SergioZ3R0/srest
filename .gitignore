@@ -8,3 +8,4 @@
 # Dependencias de Go
 /vendor/
 srest-*.csv
+srest-response-*.json
