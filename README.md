@@ -128,6 +128,23 @@ Vault commands:
 
 Vault password can be set via `SREST_VAULT_PASS` env var to skip the prompt.
 
+### TLS / Certificates
+
+For clusters with self-signed or internal CA certificates:
+
+```bash
+# Option A: provide a CA certificate (recommended)
+SLURM_CA_CERT=/path/to/ca.pem ./srest
+
+# Option B: skip TLS verification (last resort)
+SLURM_INSECURE=true ./srest
+```
+
+| Variable | Description |
+|----------|-------------|
+| `SLURM_CA_CERT` | Path to a PEM-encoded CA certificate. Merges with the system trust store. |
+| `SLURM_INSECURE` | Set to `true` to skip TLS certificate verification entirely. |
+
 ### Run
 
 ```bash
@@ -138,13 +155,15 @@ Vault password can be set via `SREST_VAULT_PASS` env var to skip the prompt.
 
 - **Encrypted credential vault**  -  AES-256-GCM encrypted config file (`~/.srest/config.vault`) with PBKDF2 key derivation.
 - **JWT authentication**  -  `X-SLURM-USER-TOKEN` and `X-SLURM-USER-NAME` headers, plus Bearer token support for proxy setups.
+- **TLS support**  -  custom CA certificates (`SLURM_CA_CERT`) or skip verification (`SLURM_INSECURE`).
 - **Auto-detection**  -  discovers the `slurmrestd` data_parser version (v0.0.40–v0.0.45) or accepts a pinned version.
 - **Version-gating**  -  adapts request fields to the detected API version; surfaces warnings and errors from slurmrestd.
 - **Dashboard**  -  real-time cluster overview: nodes up/down, jobs by state, partitions and accounts.
-- **Jobs, Nodes, Partitions**  -  live tables with detail panels, search/filter (`/`), and CSV export.
+- **Jobs, Nodes, Partitions**  -  live tables with detail panels, search/filter (`/`), GPU columns, and CSV export.
 - **Job actions**  -  cancel (`x`) and requeue (`r`) jobs directly from the TUI.
-- **Query builder**  -  visual request composer for ping, get jobs, and submit jobs with cluster-gathered options (state, account, partition, qos, gres).
+- **Query builder**  -  33 endpoints across slurm/slurmdb/actions with sidebar navigation, path parameters, and cluster-gathered options.
 - **Custom query**  -  write or paste any request path and run it directly.
+- **Response export**  -  export any query response to a pretty-printed JSON file (`e` in Response panel).
 - **Request history**  -  every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
 - **About modal**  -  press `Ctrl+O` for ASCII banner, version info, and links.
 
@@ -152,13 +171,15 @@ Vault password can be set via `SREST_VAULT_PASS` env var to skip the prompt.
 
 - **Dashboard**  -  real cluster overview: nodes up/down, jobs running/pending/completed/failed, partitions and accounts.
 - **Jobs**  -  your jobs (slurmrestd filters by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Cancel (`x`) and requeue (`r`) jobs directly from the TUI. Press `enter` in Partitions to view jobs by partition.
-- **Nodes**  -  cluster nodes with state, CPUs, memory and partitions; select a node to see its detail.
-- **Partitions**  -  partition list with configured/total nodes and max wall time. Press `enter` to filter jobs by partition.
-- **Query**  -  a request composer with three user-focused endpoints:
-  - **ping**  -  connectivity check.
-  - **get jobs**  -  query with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.
-  - **submit jobs**  -  submit a job with name, partition, qos, account, gres, wall time, nodes, cpus/task, memory, script. Partition, account, qos, and gres options are gathered from the cluster. Press `e` to open `$EDITOR`.
+- **Nodes**  -  cluster nodes with state, CPUs, GPU usage, memory and partitions; select a node to see its detail.
+- **Partitions**  -  partition list with configured/total nodes, CPU and GPU load bars, and max wall time. Press `enter` to filter jobs by partition.
+- **Query**  -  visual query builder with 33 endpoints in three categories:
+  - **slurm**  -  ping, jobs, nodes, partitions, reservations, shares (with detail variants).
+  - **slurmdb**  -  associations, accounts, clusters, users, qos, tres, wckeys, jobs, diag, config.
+  - **actions**  -  submit job, job action (cancel/requeue/hold/release), node state (drain/resume), create association.
+  - **Sidebar navigation**  -  `tab/[]` switches categories, `↑/↓` navigates endpoints.
   - **Custom query** panel: type or paste any request path to run it directly.
+  - **Response export**  -  press `e` in the Response panel to save to JSON.
   - **Request history**  -  every request logged with status, duration and warnings. Persisted across sessions (max 100 entries).
 
 **Key bindings**
@@ -177,8 +198,21 @@ Vault password can be set via `SREST_VAULT_PASS` env var to skip the prompt.
 | `Ctrl+R` | refresh (Jobs, Nodes, Partitions) |
 | `x` | cancel selected job (Jobs tab) |
 | `r` | requeue selected job (Jobs tab) / run request (Query tab) |
+| `e` | export CSV (data tabs) / export JSON response (Query tab) |
 | `Ctrl+O` | About modal |
 | `?` | toggle help |
+
+**Query tab keys**
+
+| Key | Action |
+| --- | ------ |
+| `f` / `F` | cycle panels forward / backward |
+| `tab` / `[]` | switch category (slurm / slurmdb / actions) |
+| `↑/↓` | navigate endpoints (sidebar) or params (builder) |
+| `enter` | edit parameter / start custom query input |
+| `esc` | exit custom query edit mode |
+| `←/→` | cycle parameter options |
+| `e` | export response to JSON (Response panel) |
 
 ## Test Lab
 

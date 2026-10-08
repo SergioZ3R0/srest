@@ -282,30 +282,32 @@
                 <p>Your jobs (filtered by the authenticated user). Select a job to see its detail: account, partition, time limit, run time, assigned nodes, log paths and exit code (when finished). Press <code>/</code> to filter by any column. Press <code>ctrl+r</code> to refresh. Press <code>x</code> to cancel or <code>r</code> to requeue the selected job.</p>
 
                 <h3>Nodes tab</h3>
-                <p>Cluster nodes with state, CPUs, memory and partitions. Select a node to see its detail. Press <code>/</code> to filter.</p>
+                <p>Cluster nodes with state, CPUs, GPU usage, memory and partitions. Select a node to see its detail (including GPU load bars). Press <code>/</code> to filter.</p>
 
                 <h3>Partitions tab</h3>
-                <p>Partition list with configured/total nodes and max wall time. Select a partition to see its detail. Press <code>/</code> to filter. Press <code>enter</code> to view jobs in that partition.</p>
+                <p>Partition list with configured/total nodes, CPU and GPU load bars, and max wall time. Select a partition to see its detail. Press <code>/</code> to filter. Press <code>enter</code> to view jobs in that partition.</p>
 
                     <h3>Query tab</h3>
-                <p>A Postman-style request composer with three user-focused endpoints:</p>
+                <p>Visual query builder with 33 endpoints organized in three categories:</p>
                 <ul>
-                    <li><strong>ping</strong>  -  connectivity check against slurmrestd.</li>
-                    <li><strong>get jobs</strong>  -  query jobs with filters: state, account, partition, qos, node, users. Account, partition and qos options are gathered live from the cluster.</li>
-                    <li><strong>submit jobs</strong>  -  submit a job with name, partition, qos, account, gres, wall time, nodes, cpus/task, memory, script. Partition, account, qos and gres options are gathered from the cluster. Press <code>e</code> to open <code>$EDITOR</code>.</li>
+                    <li><strong>slurm</strong>  -  ping, jobs, job detail, nodes, node detail, partitions, reservations, shares.</li>
+                    <li><strong>slurmdb</strong>  -  associations, accounts, clusters, users, qos, tres, wckeys, jobs, diag, config.</li>
+                    <li><strong>actions</strong>  -  submit job, job action (cancel/requeue/hold/release), node state (drain/resume), create association.</li>
                 </ul>
+                <p>Navigate categories with <code>tab</code>/<code>[]</code>, endpoints with <code>↑/↓</code>. Path parameters (like <code>{job_id}</code>) are shown in yellow. Press <code>e</code> in the Response panel to export the response to JSON.</p>
 
-                <h4>Query builder keys</h4>
+                <h4>Query tab keys</h4>
                 <table>
                     <tr><th>Key</th><th>Action</th></tr>
-                    <tr><td><code>1-3</code></td><td>Select endpoint (ping / get jobs / submit jobs)</td></tr>
-                    <tr><td><code>↑/↓</code></td><td>Navigate parameters</td></tr>
-                    <tr><td><code>←/→</code></td><td>Cycle the selected parameter's options (state, partition, qos, account, gres)</td></tr>
-                    <tr><td><code>enter</code></td><td>Edit the selected parameter's value</td></tr>
-                    <tr><td><code>e</code></td><td>Open <code>$EDITOR</code> for the script parameter</td></tr>
-                    <tr><td><code>del</code> / <code>backspace</code> / <code>x</code></td><td>Clear the selected parameter's value</td></tr>
-                    <tr><td><code>f</code></td><td>Cycle focus between builder / response / custom query / history</td></tr>
-                    <tr><td><code>r</code></td><td>Run the built request (GET or POST submit)</td></tr>
+                    <tr><td><code>f</code> / <code>F</code></td><td>Cycle panels forward / backward (Sidebar/Builder/Response/History/Raw)</td></tr>
+                    <tr><td><code>tab</code> / <code>[]</code></td><td>Switch category (slurm / slurmdb / actions)</td></tr>
+                    <tr><td><code>↑/↓</code></td><td>Navigate endpoints (sidebar) or parameters (builder)</td></tr>
+                    <tr><td><code>←/→</code></td><td>Cycle parameter options</td></tr>
+                    <tr><td><code>enter</code></td><td>Edit parameter / start custom query input</td></tr>
+                    <tr><td><code>esc</code></td><td>Exit custom query edit mode</td></tr>
+                    <tr><td><code>r</code></td><td>Run the built request</td></tr>
+                    <tr><td><code>e</code></td><td>Export response to JSON (Response panel) / Open $EDITOR for script param</td></tr>
+                    <tr><td><code>del</code> / <code>x</code></td><td>Clear the selected parameter's value</td></tr>
                 </table>
 
                 <h4>Custom query</h4>
@@ -316,12 +318,14 @@
                 <h2>Features</h2>
                 <ul>
                     <li><strong>Encrypted vault</strong>  -  store JWT and connection settings in an AES-256-GCM encrypted file (<code>~/.srest/config.vault</code>); credentials never sit plain on disk.</li>
+                    <li><strong>TLS support</strong>  -  custom CA certificates (<code>SLURM_CA_CERT</code>) or skip verification (<code>SLURM_INSECURE</code>).</li>
                     <li><strong>Dashboard</strong>  -  real cluster overview: nodes up/down, jobs by state, partitions and accounts.</li>
                     <li><strong>Jobs</strong>  -  your jobs (filtered by the authenticated user), with a detail panel (account, partition, time limit, run time, assigned nodes, log paths, exit code). Cancel (<code>x</code>) and requeue (<code>r</code>) jobs directly from the TUI.</li>
-                    <li><strong>Nodes</strong>  -  cluster nodes with state, CPUs and memory; select a node for details.</li>
-                    <li><strong>Partitions</strong>  -  partition list with configured/total nodes, max wall time; press <code>j</code> to filter jobs.</li>
-                    <li><strong>Query builder</strong>  -  build requests against ping, get jobs and submit jobs with parameters gathered live from the cluster (state, account, partition, qos, gres).</li>
+                    <li><strong>Nodes</strong>  -  cluster nodes with state, CPUs, GPU usage, memory and partitions; select a node for details.</li>
+                    <li><strong>Partitions</strong>  -  partition list with configured/total nodes, CPU and GPU load bars, max wall time.</li>
+                    <li><strong>Query builder</strong>  -  33 endpoints across slurm/slurmdb/actions with sidebar navigation, path parameters, and cluster-gathered options.</li>
                     <li><strong>Custom query</strong>  -  type or paste any request path to run it directly.</li>
+                    <li><strong>Response export</strong>  -  export any query response to a pretty-printed JSON file.</li>
                     <li><strong>Request history</strong>  -  every request is logged with status, duration and warnings. Persisted across sessions in <code>~/.local/share/srest/history.json</code> (max 100 entries).</li>
                     <li><strong>Version auto-detection</strong>  -  adapts to the slurmrestd data_parser (v0.0.40–45) and version-gates fields.</li>
                     <li><strong>About modal</strong>  -  press <code>ctrl+o</code> for ASCII banner, version info, and links.</li>
