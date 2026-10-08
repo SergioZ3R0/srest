@@ -36,7 +36,7 @@ It is written in **Go**, styled with
 [Lip Gloss](https://github.com/charmbracelet/lipgloss), and speaks directly to
 `slurmrestd` using JSON Web Token authentication  -  no SSH, no node login.
 
-https://github.com/user-attachments/assets/3a20799b-b075-4556-ad54-e5e0ca921562
+https://github.com/user-attachments/assets/f44ab283-2f0d-4eef-8938-003dd27b7027
 
 ## Philosophy
 
